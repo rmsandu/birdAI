@@ -1,0 +1,8 @@
+gradio
+google-genai
+python-dotenv
+pydantic
+pandas
+pillow
+pytest
+ruff
