@@ -1,19 +1,31 @@
-from birdai.file_utils import infer_modality
+from pathlib import Path
+
+from birdai.file_utils import detect_file_type, infer_modality
 
 
-def test_infer_image_modality():
-    assert infer_modality("robin.jpg") == "image"
-    assert infer_modality("bird.PNG") == "image"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
-def test_infer_audio_modality():
-    assert infer_modality("merlin_recording.wav") == "audio"
-    assert infer_modality("blackbird.m4a") == "audio"
+def test_detect_image_from_file_content():
+    detected = detect_file_type(str(FIXTURES / "sample.jpg"))
+
+    assert detected.modality == "image"
+    assert detected.mime_type == "image/jpeg"
 
 
-def test_infer_video_modality():
-    assert infer_modality("birdfy_clip.mp4") == "video"
+def test_detect_audio_from_file_content():
+    detected = detect_file_type(str(FIXTURES / "sample.wav"))
+
+    assert detected.modality == "audio"
+    assert detected.mime_type == "audio/wav"
 
 
-def test_unknown_modality():
-    assert infer_modality("notes.txt") == "unknown"
+def test_reject_video_from_file_content():
+    detected = detect_file_type(str(FIXTURES / "sample.mp4"))
+
+    assert detected.modality == "unknown"
+    assert detected.mime_type == "application/octet-stream"
+
+
+def test_reject_renamed_non_media_file():
+    assert infer_modality(str(FIXTURES / "not-really-jpg.jpg")) == "unknown"
