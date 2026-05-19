@@ -1,12 +1,38 @@
+import datetime
 import json
+import mimetypes
 from pathlib import Path
 from google import genai
-from google.genai import types
 
 from birdai.config import GEMINI_API_KEY, BIRDAI_LOCATION
 
 
 client = genai.Client(api_key=GEMINI_API_KEY)
+
+
+def _build_media_content(modality: str, uploaded_file, path: Path) -> dict:
+    mime_type = uploaded_file.mime_type or mimetypes.guess_type(path)[0]
+
+    if modality == "image":
+        return {
+            "type": "image",
+            "uri": uploaded_file.uri,
+            "mime_type": mime_type or "image/jpeg",
+        }
+    if modality == "audio":
+        return {
+            "type": "audio",
+            "uri": uploaded_file.uri,
+            "mime_type": mime_type or "audio/mpeg",
+        }
+    if modality == "video":
+        return {
+            "type": "video",
+            "uri": uploaded_file.uri,
+            "mime_type": mime_type or "video/mp4",
+        }
+
+    raise ValueError(f"Unsupported modality: {modality}")
 
 
 SYSTEM_PROMPT = """
@@ -53,27 +79,26 @@ def analyze_file(file_path: str, modality: str) -> dict:
 
     uploaded_file = client.files.upload(file=path)
 
+    current_month = datetime.datetime.now().strftime("%B")
+
     prompt = f"""
     Analyze this {modality} for bird species identification.
 
     Location: {BIRDAI_LOCATION}
-    Current season/month: May
+    Current season/month: {current_month}
 
-    Be cautious. Merlin/BirdNET and visual classifiers can make mistakes.
     Focus on uncertainty, plausible alternatives, and next observation action.
     """
 
-    response = client.models.generate_content(
+    media_content = _build_media_content(modality, uploaded_file, path)
+
+    response = client.interactions.create(
         model="gemini-2.5-flash",
-        contents=[
-            SYSTEM_PROMPT,
-            prompt,
-            uploaded_file,
-        ],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        ),
+        input=[{"type": "text", "text": prompt}, media_content],
+        system_instruction=SYSTEM_PROMPT,
+        response_format={"type": "text", "mime_type": "application/json"},
+        response_modalities=["text"],
     )
 
-    text = response.text.strip()
+    text = response.text().strip()
     return json.loads(text)

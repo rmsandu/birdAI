@@ -6,3 +6,5 @@ pandas
 pillow
 pytest
 ruff
+goole-agents-cli
+agents-cli

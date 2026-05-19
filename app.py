@@ -12,7 +12,7 @@ def run_birdai(file):
     file_path = file.name
 
     try:
-        result = analyze_observation(file_path, use_mock=True)
+        result = analyze_observation(file_path, use_mock=False)
         log_observation(file_path, result)
 
         return json.dumps(
@@ -47,8 +47,15 @@ with gr.Blocks(title="BirdAI") as demo:
 
     output = gr.Code(label="BirdAI result", language="json")
 
-    button = gr.Button("Analyze observation")
-    button.click(fn=run_birdai, inputs=file_input, outputs=output)
+    analyze_button = gr.Button("Analyze observation")
+    reset_button = gr.Button("Reset")
+
+    analyze_button.click(fn=run_birdai, inputs=file_input, outputs=output)
+    reset_button.click(
+        fn=lambda: (None, ""),
+        inputs=[],
+        outputs=[file_input, output],
+    )
 
 
 if __name__ == "__main__":
