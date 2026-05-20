@@ -41,7 +41,7 @@ The app returns structured JSON with:
 
 Example input:
 
-![Example bird observation](tests/IMG_3265.HEIC)
+![Example bird observation (personal archive)](tests/IMG_3265.png)
 
 
 Example output:
