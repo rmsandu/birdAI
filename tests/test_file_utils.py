@@ -27,5 +27,12 @@ def test_reject_video_from_file_content():
     assert detected.mime_type == "application/octet-stream"
 
 
+def test_detect_heic_image_from_file_content():
+    detected = detect_file_type(str(Path(__file__).parent / "IMG_3219.HEIC"))
+
+    assert detected.modality == "image"
+    assert detected.mime_type == "image/heic"
+
+
 def test_reject_renamed_non_media_file():
     assert infer_modality(str(FIXTURES / "not-really-jpg.jpg")) == "unknown"

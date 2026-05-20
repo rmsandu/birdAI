@@ -4,7 +4,8 @@ python-dotenv
 pydantic
 pandas
 pillow
-httpx
+pillow-heif
 pytest
 ruff
+google-agents-cli
 agents-cli

@@ -95,7 +95,12 @@ def analyze_observation(
             "image or audio recording."
         )
 
-    resolved_context, context_warnings = resolve_observation_context(observation_context)
+    resolved_context, context_warnings = resolve_observation_context(
+        observation_context,
+        file_path=file_path,
+        detected_file=detected_file,
+        http_client=http_client,
+    )
 
     if use_mock:
         result = mock_analyze_file(

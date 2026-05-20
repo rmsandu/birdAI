@@ -23,6 +23,18 @@ def _detect_image(header: bytes) -> DetectedFileType | None:
     if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
         return DetectedFileType(modality="image", mime_type="image/webp")
 
+    if len(header) >= 12 and header[4:8] == b"ftyp":
+        brand = header[8:12]
+        if brand in {
+            b"heic",
+            b"heix",
+            b"hevc",
+            b"hevx",
+            b"heim",
+            b"heis",
+        }:
+            return DetectedFileType(modality="image", mime_type="image/heic")
+
     return None
 
 
