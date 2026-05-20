@@ -235,6 +235,7 @@ with gr.Blocks(title="BirdAI") as demo:
         extract_photo_button = gr.Button("Extract From Photo")
         use_location_search_button = gr.Button("Use Location Search")
 
+    result_output = gr.Code(label="BirdAI result", language="json")
     location_status_output = gr.Textbox(
         label="Location status",
         lines=2,
@@ -242,7 +243,6 @@ with gr.Blocks(title="BirdAI") as demo:
         value="Using configured default coordinates." if default_lat is not None and default_lng is not None else "No coordinates resolved yet.",
     )
     warnings_output = gr.Textbox(label="Warnings", lines=4, interactive=False)
-    result_output = gr.Code(label="BirdAI result", language="json")
 
     analyze_button = gr.Button("Analyze observation")
     reset_button = gr.Button("Reset")
