@@ -39,33 +39,57 @@ The app returns structured JSON with:
 - `suggested_next_action`: the most useful follow-up observation.
 - `observation_context`, `modality`, and `warnings`: resolved context and runtime notes.
 
+Example input:
+
+![Example bird observation](tests/IMG_3265.HEIC)
+
+
 Example output:
 
 ```json
 {
+  "observation_context": {
+    "observation_date": "2026-05-20",
+    "observation_time": "15:14:25",
+    "location_text": "Loredo, Somo, Ribamontán al Mar, Cantabria, 39160, España",
+    "latitude": 43.459338888888894,
+    "longitude": -3.7295972222222225,
+    "location_source": "photo_exif",
+    "timezone_name": "CEST"
+  },
   "likely_species": [
     {
-      "common_name": "European Robin",
-      "scientific_name": "Erithacus rubecula",
-      "confidence_probability": 78,
-      "reason": "Small passerine with orange-red breast and robin-like proportions."
+      "common_name": "European Stonechat",
+      "scientific_name": "Saxicola rubicola",
+      "confidence_probability": 95,
+      "reason": "The bird's plumage clearly shows a male with a distinct black head, prominent white collar/neck patch, and an orange-rufous breast. Its posture on a fence post is also typical of a Stonechat, which often perches conspicuously to scan for insects. These features are highly characteristic of Saxicola rubicola.",
+      "evidence": {
+        "source": "ebird",
+        "recent_observation_count": 10,
+        "lookback_days": 30,
+        "summary": "eBird reported 10 recent observations in the last 30 days near this location.",
+        "species_code": "stonec4",
+        "last_observation_date": "2026-05-17 19:46"
+      }
     }
   ],
-  "uncertainty": "medium",
+  "uncertainty": "low",
   "uncertainty_reasons": [
-    "partial occlusion",
-    "low resolution",
-    "single frame only"
+    "The image quality is good enough to discern key identification features, and the bird is clearly visible."
   ],
   "ecological_plausibility": {
-    "location": "Zurich, Switzerland",
-    "season": "Spring",
+    "location": "Loredo, Cantabria, Spain (Atlantic coast)",
+    "season": "Spring (May)",
     "plausibility": "high",
-    "reason": "This species is commonly observed in the area during this season."
+    "reason": "Stonechats (Saxicola rubicola) are common residents and breeders across most of Spain, including the Cantabrian coast. They frequently inhabit open, scrubby, and coastal dune environments, which matches the observed habitat in the image. Spring is also their active breeding season, making their presence and behavior highly plausible."
   },
-  "suggested_next_action": "Capture another frame from the side or confirm with audio."
+  "suggested_next_action": "Observe the bird's behavior, listen for its distinctive 'chack-chack' call, and look for a potential mate or nesting activity to further confirm breeding in the area.",
+  "modality": "image",
+  "warnings": []
 }
 ```
+
+![BirdAI Gradio UI](GradioUI.png)
 
 ## Current scope
 
@@ -76,5 +100,6 @@ Example output:
 ## Running the app
 
 ```bash
-python app.py
+PYTHONPATH=src python app.py
+PYTHONPATH=src pytest
 ```

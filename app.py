@@ -39,17 +39,17 @@ def _location_status_from_context_source(location_source: str) -> str:
     return messages.get(location_source, f"Using coordinates from {location_source}.")
 
 
-def build_photo_preview(file) -> str | None:
+def build_photo_gallery_preview(file) -> list[str]:
     if file is None:
-        return None
+        return []
 
     detected_file = detect_file_type(file.name)
     if detected_file.modality != "image":
-        return None
+        return []
 
     with Image.open(file.name) as image:
         preview = image.copy()
-        preview.thumbnail((720, 720))
+        preview.thumbnail((520, 520))
         with tempfile.NamedTemporaryFile(
             suffix=".png",
             delete=False,
@@ -57,7 +57,7 @@ def build_photo_preview(file) -> str | None:
             preview_path = Path(temp_file.name)
         preview.save(preview_path, format="PNG")
 
-    return str(preview_path)
+    return [str(preview_path)]
 
 
 def update_coordinates_from_photo(
@@ -66,10 +66,10 @@ def update_coordinates_from_photo(
     latitude: float | None,
     longitude: float | None,
 ):
-    preview_image = build_photo_preview(file)
+    preview_gallery = build_photo_gallery_preview(file)
 
     if file is None:
-        return location_text, latitude, longitude, "No file uploaded yet.", preview_image
+        return location_text, latitude, longitude, "No file uploaded yet.", preview_gallery
 
     detected_file = detect_file_type(file.name)
     if detected_file.modality != "image":
@@ -78,7 +78,7 @@ def update_coordinates_from_photo(
             latitude,
             longitude,
             "Uploaded file is not an image; photo GPS extraction skipped.",
-            preview_image,
+            preview_gallery,
         )
 
     coordinates = extract_photo_coordinates(file.name)
@@ -88,7 +88,7 @@ def update_coordinates_from_photo(
             latitude,
             longitude,
             "No GPS metadata found in the uploaded photo. Use Location Search to geocode the location text.",
-            preview_image,
+            preview_gallery,
         )
 
     extracted_latitude, extracted_longitude = coordinates
@@ -117,7 +117,7 @@ def update_coordinates_from_photo(
         extracted_latitude,
         extracted_longitude,
         status,
-        preview_image,
+        preview_gallery,
     )
 
 
@@ -200,12 +200,12 @@ with gr.Blocks(title="BirdAI") as demo:
         label="Upload image or audio",
         file_types=["image", "audio"],
     )
-    photo_preview = gr.Image(
+    photo_gallery = gr.Gallery(
         label="Photo preview",
-        type="filepath",
-        height=260,
-        image_mode="RGB",
-        interactive=False,
+        columns=1,
+        rows=1,
+        height=200,
+        object_fit="contain",
     )
 
     default_date, default_time, default_location, default_lat, default_lng = (
@@ -235,7 +235,6 @@ with gr.Blocks(title="BirdAI") as demo:
         extract_photo_button = gr.Button("Extract From Photo")
         use_location_search_button = gr.Button("Use Location Search")
 
-    result_output = gr.Code(label="BirdAI result", language="json")
     location_status_output = gr.Textbox(
         label="Location status",
         lines=2,
@@ -243,6 +242,7 @@ with gr.Blocks(title="BirdAI") as demo:
         value="Using configured default coordinates." if default_lat is not None and default_lng is not None else "No coordinates resolved yet.",
     )
     warnings_output = gr.Textbox(label="Warnings", lines=4, interactive=False)
+    result_output = gr.Code(label="BirdAI result", language="json")
 
     analyze_button = gr.Button("Analyze observation")
     reset_button = gr.Button("Reset")
@@ -255,7 +255,7 @@ with gr.Blocks(title="BirdAI") as demo:
             latitude_input,
             longitude_input,
             location_status_output,
-            photo_preview,
+            photo_gallery,
         ],
     )
     use_location_search_button.click(
@@ -271,7 +271,7 @@ with gr.Blocks(title="BirdAI") as demo:
             latitude_input,
             longitude_input,
             location_status_output,
-            photo_preview,
+            photo_gallery,
         ],
     )
 
@@ -294,7 +294,7 @@ with gr.Blocks(title="BirdAI") as demo:
             "Using configured default coordinates." if default_lat is not None and default_lng is not None else "No coordinates resolved yet.",
             "No warnings.",
             "",
-            None,
+            [],
         ),
         inputs=[],
         outputs=[
@@ -307,7 +307,7 @@ with gr.Blocks(title="BirdAI") as demo:
             location_status_output,
             warnings_output,
             result_output,
-            photo_preview,
+            photo_gallery,
         ],
     )
 
