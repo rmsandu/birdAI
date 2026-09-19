@@ -38,6 +38,19 @@ class EcologicalPlausibility(BaseModel):
     reason: str
 
 
+class LocalClassifierPrediction(BaseModel):
+    species_name: str
+    scientific_name: Optional[str] = None
+    confidence_probability: int = Field(ge=0, le=100)
+
+
+class LocalClassifierResult(BaseModel):
+    source: str = "none"
+    model_version: Optional[str] = None
+    predictions: List[LocalClassifierPrediction] = Field(default_factory=list)
+    summary: str = ""
+
+
 class BirdAIResult(BaseModel):
     observation_context: ObservationContext
     likely_species: List[SpeciesCandidate]
@@ -47,3 +60,4 @@ class BirdAIResult(BaseModel):
     suggested_next_action: str
     modality: str
     warnings: List[str] = Field(default_factory=list)
+    local_classifier: LocalClassifierResult = Field(default_factory=LocalClassifierResult)

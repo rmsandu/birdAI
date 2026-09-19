@@ -145,6 +145,14 @@ def use_location_search(
     )
 
 
+def _local_classifier_summary(local_classifier) -> str:
+    if local_classifier.source != "local_classifier" or not local_classifier.predictions:
+        return local_classifier.summary or "Local classifier unavailable."
+
+    top = local_classifier.predictions[0]
+    return f"{top.species_name} ({top.confidence_probability}%)"
+
+
 def run_birdai(
     file,
     observation_date: str,
@@ -157,6 +165,7 @@ def run_birdai(
         return (
             "Please upload a bird image or audio recording.",
             "No file uploaded yet.",
+            "",
             "",
         )
 
@@ -180,10 +189,11 @@ def run_birdai(
             indent=2,
             ensure_ascii=False,
         )
-        return warning_text, location_status, result_json
+        classifier_summary = _local_classifier_summary(result.local_classifier)
+        return warning_text, location_status, result_json, classifier_summary
 
     except Exception as exc:
-        return f"Error: {exc}", "Location resolution failed.", ""
+        return f"Error: {exc}", "Location resolution failed.", "", ""
 
 
 with gr.Blocks(title="BirdAI") as demo:
@@ -243,6 +253,10 @@ with gr.Blocks(title="BirdAI") as demo:
     )
     warnings_output = gr.Textbox(label="Warnings", lines=4, interactive=False)
     result_output = gr.Code(label="BirdAI result", language="json")
+    classifier_output = gr.Textbox(
+        label="Local classifier signal",
+        interactive=False,
+    )
 
     analyze_button = gr.Button("Analyze observation")
     reset_button = gr.Button("Reset")
@@ -285,7 +299,7 @@ with gr.Blocks(title="BirdAI") as demo:
             latitude_input,
             longitude_input,
         ],
-        outputs=[warnings_output, location_status_output, result_output],
+        outputs=[warnings_output, location_status_output, result_output, classifier_output],
     )
     reset_button.click(
         fn=lambda: (
@@ -293,6 +307,7 @@ with gr.Blocks(title="BirdAI") as demo:
             *_context_defaults(),
             "Using configured default coordinates." if default_lat is not None and default_lng is not None else "No coordinates resolved yet.",
             "No warnings.",
+            "",
             "",
             [],
         ),
@@ -307,6 +322,7 @@ with gr.Blocks(title="BirdAI") as demo:
             location_status_output,
             warnings_output,
             result_output,
+            classifier_output,
             photo_gallery,
         ],
     )

@@ -30,3 +30,10 @@ opencode.json
 
 # Data files
 data/
+
+# Classifier service: datasets, checkpoints, generated reports
+classifier_service/data/
+classifier_service/checkpoints/*.pt
+classifier_service/checkpoints/*.json
+classifier_service/reports/*.json
+classifier_service/reports/*.png
