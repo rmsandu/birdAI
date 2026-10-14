@@ -36,7 +36,7 @@ def test_run_birdai_returns_result_json(monkeypatch):
     )
     monkeypatch.setattr(app_module, "log_observation", lambda *args, **kwargs: None)
 
-    warnings_text, location_status, result_json = app_module.run_birdai(
+    warnings_text, location_status, result_json, classifier_summary = app_module.run_birdai(
         file_obj,
         context.observation_date.isoformat(),
         context.observation_time.isoformat(timespec="seconds"),
@@ -50,6 +50,7 @@ def test_run_birdai_returns_result_json(monkeypatch):
     assert warnings_text == "No warnings."
     assert location_status == "Using the current location fields."
     assert payload["likely_species"][0]["common_name"] == "European Robin"
+    assert classifier_summary == "Local classifier unavailable."
 
 
 def test_update_coordinates_from_photo_uses_embedded_gps(monkeypatch):

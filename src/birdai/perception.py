@@ -1,12 +1,23 @@
 import httpx
 
+from birdai.classifier_client import (
+    ClassifierServiceError,
+    classify_image,
+    normalize_classifier_result,
+)
+from birdai.config import CLASSIFIER_ENABLED
 from birdai.context import resolve_observation_context
 from birdai.ebird_client import EBirdClient, EBirdServiceError
-from birdai.file_utils import detect_file_type
+from birdai.file_utils import DetectedFileType, detect_file_type
 from birdai.gemini_client import analyze_file as analyze_file_with_gemini
 from birdai.gemini_client import search_recent_web_evidence
 from birdai.mock_analyzer import mock_analyze_file
-from birdai.schemas import BirdAIResult, ObservationContext, SpeciesCandidate
+from birdai.schemas import (
+    BirdAIResult,
+    LocalClassifierResult,
+    ObservationContext,
+    SpeciesCandidate,
+)
 
 
 def _enrich_candidate_with_recent_observations(
@@ -79,6 +90,25 @@ def _enrich_candidate_with_recent_observations(
         return candidate.model_copy(update={"evidence": evidence}), warnings
 
 
+def _add_local_classifier_signal(
+    file_path: str,
+    *,
+    detected_file: DetectedFileType,
+    classifier_client_fn=classify_image,
+) -> tuple[LocalClassifierResult, list[str]]:
+    warnings: list[str] = []
+
+    if not CLASSIFIER_ENABLED or detected_file.modality != "image":
+        return LocalClassifierResult(source="unavailable"), warnings
+
+    try:
+        payload = classifier_client_fn(file_path)
+        return normalize_classifier_result(payload), warnings
+    except ClassifierServiceError as exc:
+        warnings.append(f"Local classifier unavailable: {exc}")
+        return LocalClassifierResult(source="error", summary=str(exc)), warnings
+
+
 def analyze_observation(
     file_path: str,
     observation_context: ObservationContext,
@@ -86,6 +116,7 @@ def analyze_observation(
     use_mock: bool = False,
     http_client: httpx.Client | None = None,
     ebird_client: EBirdClient | None = None,
+    classifier_client_fn=classify_image,
 ) -> BirdAIResult:
     detected_file = detect_file_type(file_path)
 
@@ -129,10 +160,18 @@ def analyze_observation(
         enriched_candidates.append(enriched_candidate)
         all_warnings.extend(candidate_warnings)
 
+    local_classifier, classifier_warnings = _add_local_classifier_signal(
+        file_path,
+        detected_file=detected_file,
+        classifier_client_fn=classifier_client_fn,
+    )
+    all_warnings.extend(classifier_warnings)
+
     return result.model_copy(
         update={
             "observation_context": resolved_context,
             "likely_species": enriched_candidates,
             "warnings": all_warnings,
+            "local_classifier": local_classifier,
         }
     )

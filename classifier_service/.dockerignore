@@ -1,0 +1,10 @@
+data/
+tests/
+granularity/
+reports/
+scripts/
+__pycache__/
+*.pyc
+.pytest_cache/
+checkpoints/last.pt
+checkpoints/metrics.json

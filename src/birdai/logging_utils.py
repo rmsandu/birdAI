@@ -16,6 +16,11 @@ def log_observation(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     top_species = result.likely_species[0] if result.likely_species else None
+    top_local_prediction = (
+        result.local_classifier.predictions[0]
+        if result.local_classifier.predictions
+        else None
+    )
     serialized_result = result.model_dump(mode="json")
 
     row = {
@@ -36,6 +41,12 @@ def log_observation(
         "uncertainty": result.uncertainty,
         "suggested_next_action": result.suggested_next_action,
         "evidence_source": top_species.evidence.source if top_species else None,
+        "local_classifier_top_name": (
+            top_local_prediction.species_name if top_local_prediction else None
+        ),
+        "local_classifier_confidence": (
+            top_local_prediction.confidence_probability if top_local_prediction else None
+        ),
         "result_json": json.dumps(serialized_result, ensure_ascii=False),
     }
 
