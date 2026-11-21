@@ -94,7 +94,8 @@ def test_update_coordinates_from_photo_uses_embedded_gps(monkeypatch):
     assert longitude == 8.5417
     assert "photo metadata" in status
     assert preview_image is not None
-    assert Path(preview_image).exists()
+    preview_path = preview_image[0] if isinstance(preview_image, list) else preview_image
+    assert Path(preview_path).exists()
 
 
 def test_build_photo_preview_returns_rescaled_image(monkeypatch):
@@ -110,7 +111,8 @@ def test_build_photo_preview_returns_rescaled_image(monkeypatch):
     preview_image = app_module.build_photo_preview(file_obj)
 
     assert preview_image is not None
-    assert Path(preview_image).exists()
+    preview_path = preview_image[0] if isinstance(preview_image, list) else preview_image
+    assert Path(preview_path).exists()
 
 
 def test_use_location_search_geocodes_location_text(monkeypatch):

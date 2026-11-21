@@ -20,7 +20,24 @@ def _get_optional_int(name: str, default: int) -> int:
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+
+
+def _get_model_fallbacks() -> list[str]:
+    env_val = os.getenv("GEMINI_FALLBACK_MODELS")
+    if env_val:
+        return [m.strip() for m in env_val.split(",") if m.strip()]
+    candidates = [
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+    ]
+    return [m for m in candidates if m != GEMINI_MODEL]
+
+
+# Fallback chain tried in order when the primary model returns 404 (deprecated/unavailable)
+GEMINI_MODEL_FALLBACKS = _get_model_fallbacks()
 
 EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
 EBIRD_API_URL = os.getenv("EBIRD_API_URL", "https://api.ebird.org")

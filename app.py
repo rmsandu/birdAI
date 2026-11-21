@@ -39,13 +39,13 @@ def _location_status_from_context_source(location_source: str) -> str:
     return messages.get(location_source, f"Using coordinates from {location_source}.")
 
 
-def build_photo_gallery_preview(file) -> list[str]:
+def build_photo_preview(file) -> str | None:
     if file is None:
-        return []
+        return None
 
     detected_file = detect_file_type(file.name)
     if detected_file.modality != "image":
-        return []
+        return None
 
     with Image.open(file.name) as image:
         preview = image.copy()
@@ -57,7 +57,12 @@ def build_photo_gallery_preview(file) -> list[str]:
             preview_path = Path(temp_file.name)
         preview.save(preview_path, format="PNG")
 
-    return [str(preview_path)]
+    return str(preview_path)
+
+
+def build_photo_gallery_preview(file) -> list[str]:
+    preview = build_photo_preview(file)
+    return [preview] if preview else []
 
 
 def update_coordinates_from_photo(

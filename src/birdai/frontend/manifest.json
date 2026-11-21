@@ -1,0 +1,16 @@
+{
+  "name": "BirdAI — Multimodal Bird Perception",
+  "short_name": "BirdAI",
+  "description": "Embodied bird perception, evidence exposure, and observation review app.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F9F8F6",
+  "theme_color": "#123F2A",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

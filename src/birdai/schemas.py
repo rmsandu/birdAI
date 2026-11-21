@@ -1,5 +1,5 @@
-from datetime import date, time
-from typing import List, Optional
+from datetime import date, datetime, time, timezone
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +12,54 @@ class ObservationContext(BaseModel):
     longitude: Optional[float] = None
     location_source: str = "user_input"
     timezone_name: Optional[str] = None
+
+
+class MerlinSuggestion(BaseModel):
+    species_name: str
+    scientific_name: Optional[str] = None
+    notes: Optional[str] = None
+    source: str = "merlin_user_input"
+    is_verified_ground_truth: bool = False
+
+
+class VisualEvidence(BaseModel):
+    source: str = "vlm"
+    model_name: str = "gemini-2.5-flash"
+    raw_score: Optional[float] = None
+    reason: str = ""
+    visual_features: List[str] = Field(default_factory=list)
+
+
+class AudioEvidence(BaseModel):
+    source: str = "audio_model"
+    model_name: str = "gemini-2.5-flash"
+    duration_seconds: Optional[float] = None
+    sample_rate: Optional[int] = None
+    channels: Optional[int] = None
+    merlin_suggestion: Optional[MerlinSuggestion] = None
+    raw_score: Optional[float] = None
+    reason: str = ""
+
+
+class ContextualEvidence(BaseModel):
+    source: str = "ebird"
+    recent_observation_count: int = 0
+    lookback_days: int = 30
+    summary: str = ""
+    species_code: Optional[str] = None
+    last_observation_date: Optional[str] = None
+    regional_plausibility: str = "unknown"
+    plausibility_reason: str = ""
+
+
+class CertaintyEstimate(BaseModel):
+    score: int = Field(ge=0, le=100, description="Raw model confidence heuristic (0-100)")
+    is_calibrated: bool = Field(default=False, description="Whether this score is statistically calibrated")
+    uncertainty_level: Literal["low", "medium", "high", "unknown"] = "medium"
+    uncertainty_reasons: List[str] = Field(default_factory=list)
+    score_meaning: str = Field(
+        default="Heuristic model score; not an empirical probability. Uncalibrated."
+    )
 
 
 class ObservationEvidence(BaseModel):
@@ -27,8 +75,22 @@ class SpeciesCandidate(BaseModel):
     common_name: str
     scientific_name: Optional[str] = None
     confidence_probability: int = Field(ge=0, le=100)
-    reason: str
+    reason: str = ""
     evidence: ObservationEvidence = Field(default_factory=ObservationEvidence)
+    certainty: Optional[CertaintyEstimate] = None
+    visual_evidence: Optional[VisualEvidence] = None
+    audio_evidence: Optional[AudioEvidence] = None
+    contextual_evidence: Optional[ContextualEvidence] = None
+
+    def model_post_init(self, __context) -> None:
+        if self.certainty is None:
+            self.certainty = CertaintyEstimate(
+                score=self.confidence_probability,
+                is_calibrated=False,
+                uncertainty_level="low" if self.confidence_probability >= 80 else ("medium" if self.confidence_probability >= 40 else "high"),
+                uncertainty_reasons=[],
+                score_meaning="Heuristic model score; uncalibrated.",
+            )
 
 
 class EcologicalPlausibility(BaseModel):
@@ -59,5 +121,31 @@ class BirdAIResult(BaseModel):
     ecological_plausibility: EcologicalPlausibility
     suggested_next_action: str
     modality: str
+    warnings: List[str] = Field(default_factory=list)
+    local_classifier: LocalClassifierResult = Field(default_factory=LocalClassifierResult)
+
+
+class ObservationCorrection(BaseModel):
+    confirmed_species: str
+    scientific_name: Optional[str] = None
+    is_correct_prediction: bool = True
+    correction_notes: Optional[str] = None
+    reviewer: str = "user"
+    reviewed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ObservationRecord(BaseModel):
+    id: str
+    created_at: datetime
+    modality: Literal["image", "audio", "multimodal", "unknown"] = "image"
+    image_path: Optional[str] = None
+    audio_path: Optional[str] = None
+    observation_context: ObservationContext
+    merlin_suggestion: Optional[MerlinSuggestion] = None
+    candidates: List[SpeciesCandidate] = Field(default_factory=list)
+    overall_uncertainty: Literal["low", "medium", "high", "unknown"] = "medium"
+    overall_uncertainty_reasons: List[str] = Field(default_factory=list)
+    suggested_next_action: str = ""
+    user_correction: Optional[ObservationCorrection] = None
     warnings: List[str] = Field(default_factory=list)
     local_classifier: LocalClassifierResult = Field(default_factory=LocalClassifierResult)

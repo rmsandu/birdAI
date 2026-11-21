@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#123F2A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>BirdAI — Multimodal Bird Perception</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" href="/static/icon.png">
+  <link rel="apple-touch-icon" href="/static/icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+  <!-- Top App Navigation -->
+  <header class="app-header">
+    <div class="brand">
+      <span>🦅 BirdAI</span>
+      <span class="brand-badge">Stitch UI</span>
+    </div>
+    <nav class="nav-links">
+      <button id="nav-new" class="nav-btn active">Capture</button>
+      <button id="nav-journal" class="nav-btn">Journal</button>
+    </nav>
+  </header>
+
+  <!-- Main View -->
+  <main class="app-main">
+    
+    <!-- Capture & Input View -->
+    <div id="capture-view" style="display: contents;">
+      
+      <!-- Left Panel: Observation Input -->
+      <section class="card">
+        <h2 class="card-title">
+          <span>Observation Media</span>
+          <span style="font-size: 0.75rem; font-weight: 600; color: var(--color-tan);">Camera / Audio</span>
+        </h2>
+
+        <!-- Hidden Native File Inputs -->
+        <input type="file" id="image-file-input" accept="image/*" capture="environment" style="display: none;">
+        <input type="file" id="audio-file-input" accept="audio/*" style="display: none;">
+
+        <!-- Dropzone / Mobile Selector -->
+        <div id="dropzone" class="dropzone">
+          <div class="dropzone-icons">📷 🎙️</div>
+          <div class="dropzone-text">Tap or drop bird image / audio</div>
+          <div class="dropzone-subtext">JPEG, PNG, HEIC, WAV, MP3, FLAC supported</div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+          <button type="button" class="btn-secondary" style="flex: 1;" onclick="document.getElementById('image-file-input').click()">
+            📷 Take Photo / Pick Image
+          </button>
+          <button type="button" class="btn-secondary" style="flex: 1;" onclick="document.getElementById('audio-file-input').click()">
+            🎙️ Add Sound / Merlin WAV
+          </button>
+        </div>
+
+        <!-- Previews -->
+        <div class="media-previews">
+          <div id="image-preview-container" class="preview-container" style="display: none;">
+            <img id="image-preview" alt="Bird Observation Preview">
+          </div>
+          <div id="audio-preview-container" class="audio-preview" style="display: none;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-pine);">Audio File Selected:</span>
+            <audio id="audio-preview" controls></audio>
+          </div>
+        </div>
+
+        <!-- Location Context -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label" for="location-text">Location Text</label>
+            <button id="btn-geolocation" type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 0.7rem;">📍 GPS</button>
+          </div>
+          <input type="text" id="location-text" class="form-input" value="" placeholder="Leave empty for photo GPS or enter location">
+          <span id="location-status" style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; display: block;"></span>
+        </div>
+
+        <div class="grid-2 form-group">
+          <div>
+            <label class="form-label" for="latitude">Latitude</label>
+            <input type="number" id="latitude" class="form-input" step="any" placeholder="Auto-filled from photo">
+          </div>
+          <div>
+            <label class="form-label" for="longitude">Longitude</label>
+            <input type="number" id="longitude" class="form-input" step="any" placeholder="Auto-filled from photo">
+          </div>
+        </div>
+
+        <div class="grid-2 form-group">
+          <div>
+            <label class="form-label" for="observation-date">Date</label>
+            <input type="date" id="observation-date" class="form-input">
+          </div>
+          <div>
+            <label class="form-label" for="observation-time">Time</label>
+            <input type="time" id="observation-time" class="form-input">
+          </div>
+        </div>
+
+        <!-- Merlin Audio Prior Section -->
+        <div class="merlin-box">
+          <div class="merlin-header">
+            <span>Merlin Bird ID Suggestion (Optional)</span>
+            <span class="unverified-tag">Unverified Prior</span>
+          </div>
+          <input type="text" id="merlin-species" class="form-input" placeholder="e.g. Eurasian Blue Tit" style="margin-bottom: 8px;">
+          <input type="text" id="merlin-notes" class="form-input" placeholder="Optional notes from Merlin audio identification">
+        </div>
+
+        <button id="btn-analyze" class="btn-primary">
+          <span>🔍 Analyze Observation</span>
+        </button>
+      </section>
+
+      <!-- Right Panel: Results & Evidence Workbench -->
+      <section class="results-pane">
+        
+        <!-- Loading Indicator -->
+        <div id="loading-container" class="card state-box" style="display: none;">
+          <div class="spinner"></div>
+          <p style="font-weight: 700; color: var(--color-pine);">Analyzing Observation...</p>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 4px;">Evaluating multimodal perception models and contextual checklist plausibility.</p>
+        </div>
+
+        <!-- Candidates List -->
+        <div id="results-container" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--color-pine);">Species Candidates & Evidence</h2>
+            <span style="font-size: 0.75rem; color: var(--color-berry); font-weight: 700;">⚠ Heuristic Scores · Uncalibrated</span>
+          </div>
+          <div id="candidates-list"></div>
+        </div>
+
+        <!-- Initial Placeholder -->
+        <div id="initial-placeholder" class="card state-box">
+          <div style="font-size: 2.5rem; margin-bottom: 10px;">🔭</div>
+          <p style="font-weight: 700; color: var(--color-pine);">No Observation Submitted</p>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); max-width: 320px; margin: 6px auto 0;">
+            Upload an image or sound recording from the field. BirdAI exposes independent visual, audio, and checklist evidence so you can inspect and learn.
+          </p>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- Journal View -->
+    <section id="journal-view" style="display: none; grid-column: 1 / -1;">
+      <div class="card-title">
+        <span>Observation Journal</span>
+        <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted);">Saved field reviews</span>
+      </div>
+      <div id="journal-list"></div>
+    </section>
+
+  </main>
+
+  <!-- Human Verification / Correction Modal -->
+  <div id="correction-modal" class="modal-overlay">
+    <div class="modal-sheet">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--color-pine);">Verify or Correct Species</h3>
+        <button id="modal-close" class="btn-secondary" style="padding: 4px 10px;">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="correct-species-input">Confirmed Common Name</label>
+        <input type="text" id="correct-species-input" class="form-input" placeholder="e.g. European Robin">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="correct-sci-input">Scientific Name (Optional)</label>
+        <input type="text" id="correct-sci-input" class="form-input" placeholder="e.g. Erithacus rubecula">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="correct-notes-input">Field Notes</label>
+        <textarea id="correct-notes-input" class="form-input" rows="3" placeholder="Lighting condition, song playback, plumage details observed..."></textarea>
+      </div>
+
+      <button id="btn-save-correction" class="btn-primary" style="margin-top: 18px;">
+        ✓ Save Verified Ground Truth
+      </button>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -7,5 +7,9 @@ pillow
 pillow-heif
 pytest
 ruff
+fastapi
+uvicorn
+python-multipart
+httpx
 google-agents-cli
 agents-cli

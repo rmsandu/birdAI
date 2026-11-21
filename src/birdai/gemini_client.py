@@ -1,12 +1,17 @@
 import json
+import logging
 from pathlib import Path
 
 from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types
 
-from birdai.config import EBIRD_LOOKBACK_DAYS, GEMINI_API_KEY, GEMINI_MODEL
+from birdai.config import EBIRD_LOOKBACK_DAYS, GEMINI_API_KEY, GEMINI_MODEL, GEMINI_MODEL_FALLBACKS
 from birdai.context import describe_season
 from birdai.file_utils import DetectedFileType
 from birdai.schemas import BirdAIResult, ObservationContext, ObservationEvidence
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """
@@ -155,6 +160,77 @@ def normalize_birdai_result(
     return result.model_copy(update={"likely_species": sorted_candidates})
 
 
+def generate_content_with_fallback(
+    client: genai.Client,
+    *,
+    contents,
+    config: types.GenerateContentConfig | None = None,
+    primary_model: str = GEMINI_MODEL,
+    fallback_models: list[str] | None = None,
+):
+    """Call client.models.generate_content with automated fallback if a model is unavailable or deprecated."""
+    candidates = [primary_model]
+    for model_name in (fallback_models or GEMINI_MODEL_FALLBACKS):
+        if model_name not in candidates:
+            candidates.append(model_name)
+
+    last_error: Exception | None = None
+
+    for idx, model_name in enumerate(candidates):
+        try:
+            logger.info("Calling Gemini API with model: %s", model_name)
+            return client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=config,
+            )
+        except genai_errors.APIError as exc:
+            code = getattr(exc, "code", None)
+            err_msg = str(exc).lower()
+            is_unavailable = (
+                code == 404
+                or "not_found" in err_msg
+                or "not found" in err_msg
+                or "not available" in err_msg
+                or "no longer available" in err_msg
+                or "is not supported" in err_msg
+            )
+            if is_unavailable and idx < len(candidates) - 1:
+                next_model = candidates[idx + 1]
+                logger.warning(
+                    "Gemini model '%s' unavailable (code=%s, error=%s). Falling back to '%s'.",
+                    model_name,
+                    code,
+                    exc,
+                    next_model,
+                )
+                last_error = exc
+                continue
+            raise
+        except Exception as exc:
+            err_msg = str(exc).lower()
+            is_unavailable = (
+                "404" in err_msg
+                or "not found" in err_msg
+                or "not available" in err_msg
+                or "no longer available" in err_msg
+            )
+            if is_unavailable and idx < len(candidates) - 1:
+                next_model = candidates[idx + 1]
+                logger.warning(
+                    "Gemini model '%s' failed (%s). Falling back to '%s'.",
+                    model_name,
+                    exc,
+                    next_model,
+                )
+                last_error = exc
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+
+
 def analyze_file(
     file_path: str,
     *,
@@ -164,15 +240,23 @@ def analyze_file(
     client = get_client()
     path = Path(file_path)
     uploaded_file = client.files.upload(file=path)
-    media_content = _build_media_content(detected_file, uploaded_file)
     prompt = _build_analysis_prompt(detected_file.modality, observation_context)
 
-    response = client.interactions.create(
-        model=GEMINI_MODEL,
-        input=[{"type": "text", "text": prompt}, media_content],
-        system_instruction=SYSTEM_PROMPT,
-        response_format={"type": "text", "mime_type": "application/json"},
-        response_modalities=["text"],
+    response = generate_content_with_fallback(
+        client,
+        contents=[
+            types.Content(parts=[
+                types.Part(text=prompt),
+                types.Part.from_uri(
+                    file_uri=uploaded_file.uri,
+                    mime_type=detected_file.mime_type,
+                ),
+            ])
+        ],
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            response_mime_type="application/json",
+        ),
     )
 
     payload = parse_gemini_json(extract_response_text(response))
@@ -199,11 +283,12 @@ near {observation_context.location_text}. Focus on the last {EBIRD_LOOKBACK_DAYS
 Return a short plain-text summary with no markdown.
 """
 
-    response = client.interactions.create(
-        model=GEMINI_MODEL,
-        input=[{"type": "text", "text": prompt}],
-        tools=[{"google_search": {}}],
-        response_modalities=["text"],
+    response = generate_content_with_fallback(
+        client,
+        contents=[types.Content(parts=[types.Part(text=prompt)])],
+        config=types.GenerateContentConfig(
+            tools=[types.Tool(google_search=types.GoogleSearch())],
+        ),
     )
 
     return ObservationEvidence(

@@ -121,3 +121,100 @@ def test_normalize_birdai_result_sorts_and_limits_to_top_three():
         "Species 4",
         "Species 1",
     ]
+
+
+def test_generate_content_with_fallback_success_first_try():
+    from unittest.mock import MagicMock
+    from birdai.gemini_client import generate_content_with_fallback
+
+    client = MagicMock()
+    expected_response = MagicMock(text="success")
+    client.models.generate_content.return_value = expected_response
+
+    res = generate_content_with_fallback(
+        client,
+        contents=["test"],
+        primary_model="gemini-3.5-flash-lite",
+        fallback_models=["gemini-2.5-flash"],
+    )
+
+    assert res == expected_response
+    assert client.models.generate_content.call_count == 1
+    assert client.models.generate_content.call_args.kwargs["model"] == "gemini-3.5-flash-lite"
+
+
+def test_generate_content_with_fallback_switches_on_404():
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from birdai.gemini_client import generate_content_with_fallback
+
+    client = MagicMock()
+    not_found_err = errors.ClientError(
+        404,
+        {"error": {"code": 404, "message": "This model models/gemini-3.5-flash-lite is no longer available."}}
+    )
+    fallback_response = MagicMock(text="fallback success")
+
+    client.models.generate_content.side_effect = [not_found_err, fallback_response]
+
+    res = generate_content_with_fallback(
+        client,
+        contents=["test"],
+        primary_model="gemini-3.5-flash-lite",
+        fallback_models=["gemini-2.5-flash"],
+    )
+
+    assert res == fallback_response
+    assert client.models.generate_content.call_count == 2
+    # Verify second call used the fallback model
+    second_call_model = client.models.generate_content.call_args_list[1].kwargs["model"]
+    assert second_call_model == "gemini-2.5-flash"
+
+
+def test_generate_content_with_fallback_raises_when_all_fail():
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from birdai.gemini_client import generate_content_with_fallback
+
+    client = MagicMock()
+    not_found_err = errors.ClientError(
+        404,
+        {"error": {"code": 404, "message": "Model not found."}}
+    )
+    client.models.generate_content.side_effect = not_found_err
+
+    with pytest.raises(errors.ClientError) as exc_info:
+        generate_content_with_fallback(
+            client,
+            contents=["test"],
+            primary_model="gemini-3.5-flash-lite",
+            fallback_models=["gemini-2.5-flash"],
+        )
+
+    assert exc_info.value.code == 404
+    assert client.models.generate_content.call_count == 2
+
+
+def test_generate_content_with_fallback_does_not_catch_unrelated_errors():
+    from unittest.mock import MagicMock
+    from google.genai import errors
+    from birdai.gemini_client import generate_content_with_fallback
+
+    client = MagicMock()
+    auth_err = errors.ClientError(
+        401,
+        {"error": {"code": 401, "message": "API key invalid."}}
+    )
+    client.models.generate_content.side_effect = auth_err
+
+    with pytest.raises(errors.ClientError) as exc_info:
+        generate_content_with_fallback(
+            client,
+            contents=["test"],
+            primary_model="gemini-3.5-flash-lite",
+            fallback_models=["gemini-2.5-flash"],
+        )
+
+    assert exc_info.value.code == 401
+    assert client.models.generate_content.call_count == 1
+
