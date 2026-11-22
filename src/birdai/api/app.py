@@ -6,6 +6,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from birdai.api.routes import router as api_router
+from birdai.auth.routes import router as auth_router
+from birdai.db.session import init_db
+
+# Initialize database schema
+init_db()
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
@@ -24,6 +29,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")

@@ -21,10 +21,19 @@
       <span>🦅 BirdAI</span>
       <span class="brand-badge">Stitch UI</span>
     </div>
-    <nav class="nav-links">
-      <button id="nav-new" class="nav-btn active">Capture</button>
-      <button id="nav-journal" class="nav-btn">Journal</button>
-    </nav>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <nav class="nav-links">
+        <button id="nav-new" class="nav-btn active">Capture</button>
+        <button id="nav-journal" class="nav-btn">Journal</button>
+      </nav>
+      <div id="user-nav-section" class="user-nav">
+        <button id="btn-open-auth" class="btn-auth">Sign In</button>
+        <div id="user-profile-badge" class="user-badge" style="display: none;">
+          <span id="user-email-display" class="user-email"></span>
+          <button id="btn-logout" class="btn-logout" title="Sign Out">Sign Out</button>
+        </div>
+      </div>
+    </div>
   </header>
 
   <!-- Main View -->
@@ -160,6 +169,51 @@
     </section>
 
   </main>
+
+  <!-- User Authentication Modal -->
+  <div id="auth-modal" class="modal-overlay">
+    <div class="modal-sheet" style="max-width: 380px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="auth-tabs">
+          <button id="tab-login" class="tab-btn active" type="button">Sign In</button>
+          <button id="tab-register" class="tab-btn" type="button">Create Account</button>
+        </div>
+        <button id="auth-modal-close" class="btn-secondary" style="padding: 4px 10px;">✕</button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="form-login">
+        <div class="form-group">
+          <label class="form-label" for="login-email">Email</label>
+          <input type="email" id="login-email" class="form-input" required placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input type="password" id="login-password" class="form-input" required placeholder="••••••••">
+        </div>
+        <div id="login-error" class="auth-error" style="display: none;"></div>
+        <button type="submit" class="btn-primary" style="margin-top: 14px;">Sign In</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-register" style="display: none;">
+        <div class="form-group">
+          <label class="form-label" for="register-name">Full Name (Optional)</label>
+          <input type="text" id="register-name" class="form-input" placeholder="Field Naturalist">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="register-email">Email</label>
+          <input type="email" id="register-email" class="form-input" required placeholder="name@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="register-password">Password</label>
+          <input type="password" id="register-password" class="form-input" required minlength="8" placeholder="At least 8 characters">
+        </div>
+        <div id="register-error" class="auth-error" style="display: none;"></div>
+        <button type="submit" class="btn-primary" style="margin-top: 14px;">Create Account</button>
+      </form>
+    </div>
+  </div>
 
   <!-- Human Verification / Correction Modal -->
   <div id="correction-modal" class="modal-overlay">

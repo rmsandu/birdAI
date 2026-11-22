@@ -6,6 +6,7 @@ from starlette.testclient import TestClient
 
 from birdai.api.app import app
 from birdai.api import routes as routes_module
+from birdai.db.models import UserModel
 from birdai.storage import LocalObservationStore
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -15,7 +16,18 @@ FIXTURES = Path(__file__).parent / "fixtures"
 def test_client(tmp_path, monkeypatch):
     test_store = LocalObservationStore(base_dir=str(tmp_path))
     monkeypatch.setattr(routes_module, "store", test_store)
-    return TestClient(app)
+    mock_user = UserModel(
+        id="test-user-123",
+        email="test@example.com",
+        hashed_password="hash",
+        full_name="Test User",
+        is_active=True,
+    )
+    app.dependency_overrides[routes_module.get_current_active_user] = lambda: mock_user
+    app.dependency_overrides[routes_module.get_current_user] = lambda: mock_user
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
 
 
 def test_health_endpoint(test_client):
@@ -84,3 +96,16 @@ def test_create_observation_requires_media(test_client):
     )
     assert response.status_code == 400
     assert "At least one image or audio file" in response.json()["detail"]
+
+
+def test_observation_endpoints_require_authentication():
+    # Fresh client with no auth overrides
+    app.dependency_overrides.clear()
+    unauth_client = TestClient(app)
+
+    res = unauth_client.get("/api/observations")
+    assert res.status_code == 401
+
+    post_res = unauth_client.post("/api/observations")
+    assert post_res.status_code == 401
+

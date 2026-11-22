@@ -1,22 +1,35 @@
+import inspect
 import os
 import tempfile
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 
+from birdai.auth.dependencies import get_current_active_user, get_current_user
 from birdai.context import build_observation_context, reverse_geocode_coordinates
+from birdai.db.models import UserModel
+from birdai.db.session import get_db
+from birdai.db.sql_store import SQLObservationStore
 from birdai.perception import analyze_multimodal_observation
 from birdai.photo_metadata import extract_photo_coordinates
 from birdai.schemas import MerlinSuggestion, ObservationCorrection, ObservationRecord
-from birdai.storage import LocalObservationStore
 
 router = APIRouter(tags=["observations"])
 
 # Data directory can be configured via environment variable
 DATA_DIR = os.getenv("BIRDAI_DATA_DIR", "data")
-store = LocalObservationStore(base_dir=DATA_DIR)
+
+# Global store fallback (allows monkeypatching in unit tests)
+store = None
+
+
+def get_store(db: Session = Depends(get_db)):
+    if store is not None:
+        return store
+    return SQLObservationStore(db=db, base_dir=DATA_DIR)
 
 
 @router.post("/extract-metadata")
@@ -103,6 +116,8 @@ async def create_observation(
     merlin_species: Optional[str] = Form(None),
     merlin_notes: Optional[str] = Form(None),
     use_mock: bool = Form(False),
+    current_user: UserModel = Depends(get_current_active_user),
+    obs_store=Depends(get_store),
 ) -> ObservationRecord:
     """Submit a bird observation with image, audio, or both."""
     if not image and not audio:
@@ -164,8 +179,12 @@ async def create_observation(
         rel_aud = f"/api/media/{record.id}/{audio.filename}" if (audio and audio.filename) else None
         record = record.model_copy(update={"image_path": rel_img, "audio_path": rel_aud})
 
-        # Save to local store
-        store.save(record, files=saved_files)
+        # Save to store with user_id scoping
+        sig = inspect.signature(obs_store.save)
+        if "user_id" in sig.parameters:
+            obs_store.save(record, user_id=current_user.id, files=saved_files)
+        else:
+            obs_store.save(record, files=saved_files)
         return record
 
     finally:
@@ -182,9 +201,18 @@ async def create_observation(
 
 
 @router.get("/observations/{observation_id}", response_model=ObservationRecord)
-def get_observation(observation_id: str) -> ObservationRecord:
+def get_observation(
+    observation_id: str,
+    current_user: UserModel = Depends(get_current_active_user),
+    obs_store=Depends(get_store),
+) -> ObservationRecord:
     """Retrieve an observation by ID with its evidence breakdown and status."""
-    record = store.get(observation_id)
+    sig = inspect.signature(obs_store.get)
+    if "user_id" in sig.parameters:
+        record = obs_store.get(observation_id, user_id=current_user.id)
+    else:
+        record = obs_store.get(observation_id)
+
     if not record:
         raise HTTPException(status_code=404, detail="Observation not found.")
     return record
@@ -194,9 +222,18 @@ def get_observation(observation_id: str) -> ObservationRecord:
 def correct_observation(
     observation_id: str,
     correction: ObservationCorrection,
+    current_user: UserModel = Depends(get_current_active_user),
+    obs_store=Depends(get_store),
 ) -> ObservationRecord:
     """Submit a human verification or species correction for an observation."""
-    updated = store.update_correction(observation_id, correction)
+    sig = inspect.signature(obs_store.update_correction)
+    if "user_id" in sig.parameters:
+        updated = obs_store.update_correction(
+            observation_id, correction, user_id=current_user.id
+        )
+    else:
+        updated = obs_store.update_correction(observation_id, correction)
+
     if not updated:
         raise HTTPException(status_code=404, detail="Observation not found.")
     return updated
@@ -207,15 +244,38 @@ def list_observations(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     reviewed_only: Optional[bool] = Query(None),
+    current_user: UserModel = Depends(get_current_active_user),
+    obs_store=Depends(get_store),
 ) -> List[ObservationRecord]:
     """List saved observations with pagination and optional review status filtering."""
-    return store.list(limit=limit, offset=offset, reviewed_only=reviewed_only)
+    sig = inspect.signature(obs_store.list)
+    if "user_id" in sig.parameters:
+        return obs_store.list(
+            user_id=current_user.id,
+            limit=limit,
+            offset=offset,
+            reviewed_only=reviewed_only,
+        )
+    return obs_store.list(limit=limit, offset=offset, reviewed_only=reviewed_only)
 
 
 @router.get("/media/{observation_id}/{filename}")
-def get_observation_media(observation_id: str, filename: str):
-    """Serve uploaded observation media file."""
-    path = store.get_media_path(observation_id, filename)
+def get_observation_media(
+    observation_id: str,
+    filename: str,
+    current_user: Optional[UserModel] = Depends(get_current_user),
+    obs_store=Depends(get_store),
+):
+    """Serve uploaded observation media file (requires observation ownership)."""
+    user_id = current_user.id if current_user else None
+    sig = inspect.signature(obs_store.get_media_path)
+    if "user_id" in sig.parameters:
+        path = obs_store.get_media_path(
+            observation_id, filename, user_id=user_id
+        )
+    else:
+        path = obs_store.get_media_path(observation_id, filename)
+
     if not path:
         raise HTTPException(status_code=404, detail="Media file not found.")
     return FileResponse(path)
