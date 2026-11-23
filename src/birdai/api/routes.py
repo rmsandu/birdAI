@@ -57,7 +57,6 @@ async def extract_metadata(file: UploadFile):
         observation_time: Optional[str] = None
         try:
             from PIL import Image as PILImage
-            from PIL.ExifTags import TAGS
             img = PILImage.open(temp_path)
             exif_raw = img._getexif() if hasattr(img, "_getexif") else None
             if exif_raw:

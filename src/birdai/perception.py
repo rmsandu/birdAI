@@ -259,8 +259,6 @@ def analyze_multimodal_observation(
     uncertainty_reasons: List[str] = []
     suggested_next_action = ""
 
-    # Primary media file for context extraction (EXIF GPS)
-    primary_file = image_path or audio_path
     resolved_context = observation_context
 
     # 1. Analyze Image if present

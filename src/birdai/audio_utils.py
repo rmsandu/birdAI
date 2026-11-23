@@ -1,6 +1,5 @@
 import wave
 from pathlib import Path
-from typing import Optional
 
 
 def inspect_audio_file(file_path: str) -> dict:
