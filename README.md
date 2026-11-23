@@ -81,10 +81,11 @@ STITCH_API_KEY=your_stitch_api_key_here
 
 ### 2. Local Python Development
 
-Install dependencies and start the service:
+Requires **Python 3.14** (the same version as the Docker images; see `.python-version`).
+Install dependencies (runtime + test/lint tools) and start the service:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 PYTHONPATH=src uvicorn birdai.api.app:app --host 0.0.0.0 --port 8080 --reload
 ```
 

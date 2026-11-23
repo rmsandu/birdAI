@@ -1,0 +1,6 @@
+# Local development and testing: pip install -r requirements-dev.txt
+-r requirements.txt
+pytest==9.0.3
+ruff==0.15.13
+# Legacy Gradio UI (app.py); not used by the FastAPI app or Docker image
+gradio==6.14.0
