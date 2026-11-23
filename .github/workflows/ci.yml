@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+# Cancel an older run on the same branch/PR when new commits arrive
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    name: Lint & test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src
+      # Tests must never depend on real credentials or call paid APIs
+      GEMINI_API_KEY: ""
+      EBIRD_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: ruff check . --output-format=github
+
+      - name: Pytest
+        run: pytest -q
+
+  docker-build:
+    name: Docker build (app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image (not pushed)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: birdai:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test /health
+        run: |
+          docker run -d --name birdai -p 8080:8080 birdai:ci
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health; then exit 0; fi
+            sleep 1
+          done
+          echo "Service did not become healthy"; docker logs birdai; exit 1
+
+      - name: Image must not contain private data
+        run: |
+          docker run --rm birdai:ci sh -c '
+            test -z "$(ls -A /app/data)" || { echo "/app/data is not empty"; ls -la /app/data; exit 1; }
+            ! find / -xdev \( -name .env -o -name "*.db" \) -not -path "/proc/*" 2>/dev/null | grep -q . \
+              || { echo "Found .env or database file in image"; exit 1; }
+          '
+
+  # The classifier image is not built here: it needs classifier_service/checkpoints/best.pt,
+  # which is not in git. Add a job once checkpoints live in a model registry.

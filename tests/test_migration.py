@@ -1,11 +1,9 @@
 import json
-from pathlib import Path
 
-import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from birdai.db.models import Base, ObservationModel, UserModel
+from birdai.db.models import ObservationModel, UserModel
 from birdai.db.session import init_db
 from scripts.migrate_json_to_db import migrate
 

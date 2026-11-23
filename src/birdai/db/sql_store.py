@@ -145,6 +145,18 @@ class SQLObservationStore:
         models = query.offset(offset).limit(limit).all()
         return [self._to_record(m) for m in models]
 
+    def list_all_for_evaluation(self, user_id: Optional[str] = None) -> List[ObservationRecord]:
+        """Return every observation (optionally for one user) for offline evaluation.
+
+        Deliberately not user-scoped by default: this is for local CLI tooling such as
+        scripts/evaluate.py, and must never be exposed through the API.
+        """
+        query = self.db.query(ObservationModel)
+        if user_id is not None:
+            query = query.filter(ObservationModel.user_id == user_id)
+        models = query.order_by(ObservationModel.created_at.desc()).all()
+        return [self._to_record(m) for m in models]
+
     def get_media_path(
         self,
         observation_id: str,

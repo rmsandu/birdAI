@@ -1,0 +1,22 @@
+# Keep secrets, private data and local tooling out of the build context.
+.env
+.env.*
+!.env.example
+data/
+.git/
+.venv/
+venv/
+env/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+# Sample photos in the repo root only (frontend icons under src/ are kept)
+*.JPG
+*.jpg
+*.png
+docs/
+tests/
+classifier_service/data/
+classifier_service/reports/

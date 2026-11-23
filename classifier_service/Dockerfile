@@ -1,7 +1,7 @@
 # CPU-only inference image for the BirdAI classifier service.
 # Training happens outside Docker; this image only serves a trained checkpoint.
 
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /build
 
@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision \
     && pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 

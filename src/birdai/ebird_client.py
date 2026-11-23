@@ -1,4 +1,5 @@
 from functools import lru_cache
+import math
 
 import httpx
 
@@ -10,7 +11,32 @@ from birdai.config import (
     EBIRD_RADIUS_KM,
     HTTP_TIMEOUT_SECONDS,
 )
-from birdai.schemas import ObservationContext, ObservationEvidence
+from birdai.schemas import ObservationContext, ObservationEvidence, SightingItem
+
+
+def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate the great circle distance in kilometers between two points."""
+    r = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return round(r * c, 2)
+
+
+def sort_sightings(sightings: list[SightingItem]) -> list[SightingItem]:
+    """Sort closest first; among equal distances, most recent first.
+
+    Relies on ``observed_at`` being an ISO-like "YYYY-MM-DD HH:MM" string so that
+    lexical order matches chronological order.
+    """
+    by_date_desc = sorted(sightings, key=lambda s: s.observed_at, reverse=True)
+    return sorted(by_date_desc, key=lambda s: s.distance_km)  # stable sort keeps date order
 
 
 class EBirdServiceError(RuntimeError):
@@ -134,4 +160,95 @@ class EBirdClient:
                 f"eBird reported {count} recent observations in the last "
                 f"{EBIRD_LOOKBACK_DAYS} days near this location."
             ),
+        )
+
+    def _sightings_in_radius(
+        self,
+        path: str,
+        lat: float,
+        lng: float,
+        dist_km: int,
+        back_days: int,
+        max_results: int,
+        notable: bool,
+    ) -> list[SightingItem]:
+        dist_km = min(max(dist_km, 1), 50)
+        back_days = min(max(back_days, 1), 30)
+
+        payload = self._request(
+            path,
+            params={
+                "lat": lat,
+                "lng": lng,
+                "dist": dist_km,
+                "back": back_days,
+                "maxResults": max_results,
+            },
+        )
+
+        sightings: list[SightingItem] = []
+        for item in payload or []:
+            obs_lat = item.get("lat")
+            obs_lng = item.get("lng")
+            if obs_lat is None or obs_lng is None:
+                continue
+            distance = haversine_distance_km(lat, lng, obs_lat, obs_lng)
+            if distance > dist_km:
+                continue
+
+            sub_id = item.get("subId")
+            sightings.append(
+                SightingItem(
+                    species_common_name=item.get("comName", "Unknown"),
+                    species_scientific_name=item.get("sciName"),
+                    count=item.get("howMany") or 1,
+                    observed_at=item.get("obsDt", ""),
+                    location_name=item.get("locName", "Nearby Location"),
+                    latitude=obs_lat,
+                    longitude=obs_lng,
+                    distance_km=distance,
+                    source="ebird",
+                    checklist_url=f"https://ebird.org/checklist/{sub_id}" if sub_id else None,
+                    notable=notable,
+                )
+            )
+
+        return sort_sightings(sightings)
+
+    def recent_sightings_in_radius(
+        self,
+        lat: float,
+        lng: float,
+        dist_km: int = 15,
+        back_days: int = 7,
+        max_results: int = 40,
+    ) -> list[SightingItem]:
+        return self._sightings_in_radius(
+            "/v2/data/obs/geo/recent", lat, lng, dist_km, back_days, max_results, notable=False
+        )
+
+    def recent_species_sightings_in_radius(
+        self,
+        species_code: str,
+        lat: float,
+        lng: float,
+        dist_km: int = 15,
+        back_days: int = 7,
+        max_results: int = 40,
+    ) -> list[SightingItem]:
+        return self._sightings_in_radius(
+            f"/v2/data/obs/geo/recent/{species_code}",
+            lat, lng, dist_km, back_days, max_results, notable=False,
+        )
+
+    def recent_notable_sightings_in_radius(
+        self,
+        lat: float,
+        lng: float,
+        dist_km: int = 15,
+        back_days: int = 7,
+        max_results: int = 40,
+    ) -> list[SightingItem]:
+        return self._sightings_in_radius(
+            "/v2/data/obs/geo/recent/notable", lat, lng, dist_km, back_days, max_results, notable=True
         )

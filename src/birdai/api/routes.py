@@ -15,7 +15,15 @@ from birdai.db.session import get_db
 from birdai.db.sql_store import SQLObservationStore
 from birdai.perception import analyze_multimodal_observation
 from birdai.photo_metadata import extract_photo_coordinates
-from birdai.schemas import MerlinSuggestion, ObservationCorrection, ObservationRecord
+from birdai.schemas import (
+    ChatRequest,
+    ChatResponse,
+    MerlinSuggestion,
+    ObservationCorrection,
+    ObservationRecord,
+    SightingsResponse,
+)
+from birdai.chat_agent import BirdChatAgent
 
 router = APIRouter(tags=["observations"])
 
@@ -49,7 +57,6 @@ async def extract_metadata(file: UploadFile):
         observation_time: Optional[str] = None
         try:
             from PIL import Image as PILImage
-            from PIL.ExifTags import TAGS
             img = PILImage.open(temp_path)
             exif_raw = img._getexif() if hasattr(img, "_getexif") else None
             if exif_raw:
@@ -279,3 +286,49 @@ def get_observation_media(
     if not path:
         raise HTTPException(status_code=404, detail="Media file not found.")
     return FileResponse(path)
+
+
+# Shared chat agent (and its sightings aggregator) reused across requests
+chat_agent = BirdChatAgent()
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat_sightings(
+    request: ChatRequest,
+    current_user: UserModel = Depends(get_current_active_user),
+) -> ChatResponse:
+    """Natural language bird sightings assistant powered by eBird and ornitho.ch."""
+    return chat_agent.process_query(
+        message=request.message,
+        conversation_history=request.conversation_history,
+        user_lat=request.user_latitude,
+        user_lng=request.user_longitude,
+        preferred_radius_km=request.preferred_radius_km or 15,
+    )
+
+
+@router.get("/sightings", response_model=SightingsResponse)
+def get_recent_sightings(
+    location: Optional[str] = Query(None, description="City or landmark name"),
+    radius_km: int = Query(15, ge=1, le=50, description="Radius in km (5, 15, 25)"),
+    species: Optional[str] = Query(None, description="Species common or scientific name"),
+    lat: Optional[float] = Query(None),
+    lng: Optional[float] = Query(None),
+    current_user: UserModel = Depends(get_current_active_user),
+) -> SightingsResponse:
+    """Direct REST query for recent sightings from eBird and ornitho.ch.
+
+    ``unavailable_sources`` lists any source that failed, so an empty list of sightings
+    can be told apart from "couldn't check".
+    """
+    sightings, metadata = chat_agent.aggregator.search_sightings(
+        location_name=location,
+        radius_km=radius_km,
+        species_name=species,
+        user_lat=lat,
+        user_lng=lng,
+    )
+    return SightingsResponse(
+        sightings=sightings,
+        unavailable_sources=metadata.get("unavailable_sources", {}),
+    )

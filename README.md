@@ -81,10 +81,11 @@ STITCH_API_KEY=your_stitch_api_key_here
 
 ### 2. Local Python Development
 
-Install dependencies and start the service:
+Requires **Python 3.14** (the same version as the Docker images; see `.python-version`).
+Install dependencies (runtime + test/lint tools) and start the service:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 PYTHONPATH=src uvicorn birdai.api.app:app --host 0.0.0.0 --port 8080 --reload
 ```
 
@@ -124,15 +125,21 @@ A central contribution of BirdAI is reliable, reproducible evaluation over real-
 
 ### Running the Evaluator
 
-Evaluate against the included benchmark dataset (`data/evaluation_samples/seed_benchmark.json`) or your own accumulated observations in `data/`:
+Evaluate against the included benchmark dataset (`data/evaluation_samples/seed_benchmark.json`) or the observations you've recorded in the app database (`DATABASE_URL`, default `data/birdai.db`). Only observations you've confirmed or corrected in the app are scored.
 
 ```bash
 # Run against seed benchmark
 PYTHONPATH=src python scripts/evaluate.py --benchmark data/evaluation_samples/seed_benchmark.json
 
-# Run against all verified field observations in data/
-PYTHONPATH=src python scripts/evaluate.py --data-dir data
+# Run against all users' verified observations in the database
+PYTHONPATH=src python scripts/evaluate.py
+
+# Only one user's observations, or a different database
+PYTHONPATH=src python scripts/evaluate.py --user you@example.com
+PYTHONPATH=src python scripts/evaluate.py --database-url sqlite:///path/to/other.db
 ```
+
+Legacy JSON observations in `data/observations/` must be imported first with `scripts/migrate_json_to_db.py`.
 
 ### Reported Metrics
 
@@ -159,8 +166,18 @@ PYTHONPATH=src python scripts/evaluate.py --data-dir data
 
 ## Testing
 
-Run the automated test suite:
+Run the automated test suite and linter:
 
 ```bash
 PYTHONPATH=src pytest
+ruff check .
 ```
+
+### Continuous Integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `master`:
+
+1. **Lint & test**: `ruff` and `pytest` on Python 3.14 (from `.python-version`), with no API keys set, so tests can never hit real Gemini or eBird.
+2. **Docker build**: builds the app image (not pushed), checks `/health` responds, and fails if a `.env` or database file ended up inside the image.
+
+The classifier image isn't built in CI yet because its checkpoint isn't stored in git. There's no deployment step yet.
