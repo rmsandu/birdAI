@@ -1,5 +1,5 @@
 from datetime import date, datetime, time, timezone
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -149,3 +149,47 @@ class ObservationRecord(BaseModel):
     user_correction: Optional[ObservationCorrection] = None
     warnings: List[str] = Field(default_factory=list)
     local_classifier: LocalClassifierResult = Field(default_factory=LocalClassifierResult)
+
+
+class SightingItem(BaseModel):
+    species_common_name: str
+    species_scientific_name: Optional[str] = None
+    count: Optional[int] = 1
+    observed_at: str
+    location_name: str
+    latitude: float
+    longitude: float
+    distance_km: float
+    source: Literal["ebird", "ornitho.ch"]
+    checklist_url: Optional[str] = None
+    notable: bool = False
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant", "system"]
+    content: str
+    sightings: Optional[List[SightingItem]] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: List[ChatMessage] = Field(default_factory=list)
+    user_latitude: Optional[float] = None
+    user_longitude: Optional[float] = None
+    preferred_radius_km: Optional[int] = 15
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    sightings: List[SightingItem] = Field(default_factory=list)
+    parsed_query: dict = Field(default_factory=dict)
+    # "ai": Gemini understood the question; "rule_based": keyword-matching fallback
+    mode: Literal["ai", "rule_based"] = "ai"
+    # Source name -> why it couldn't be queried (results may be incomplete)
+    unavailable_sources: Dict[str, str] = Field(default_factory=dict)
+
+
+class SightingsResponse(BaseModel):
+    sightings: List[SightingItem] = Field(default_factory=list)
+    unavailable_sources: Dict[str, str] = Field(default_factory=dict)
