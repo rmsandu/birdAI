@@ -28,8 +28,10 @@ env/
 .mcp.json
 opencode.json
 
-# Data files
-data/
+# Data files (runtime DB, uploads, observations stay local)
+data/*
+# ...except the synthetic benchmark used by tests and the README
+!data/evaluation_samples/
 
 # Classifier service: datasets, checkpoints, generated reports
 classifier_service/data/

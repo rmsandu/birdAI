@@ -1,0 +1,164 @@
+[
+  {
+    "id": "bench-001",
+    "created_at": "2026-05-19T10:00:00Z",
+    "modality": "image",
+    "observation_context": {
+      "observation_date": "2026-05-19",
+      "observation_time": "10:00:00",
+      "location_text": "Zurich, Switzerland",
+      "latitude": 47.3769,
+      "longitude": 8.5417
+    },
+    "candidates": [
+      {
+        "common_name": "European Robin",
+        "scientific_name": "Erithacus rubecula",
+        "confidence_probability": 90,
+        "reason": "Clear orange-red breast, plump body, dark eye."
+      },
+      {
+        "common_name": "Common Redstart",
+        "scientific_name": "Phoenicurus phoenicurus",
+        "confidence_probability": 10,
+        "reason": "Similar silhouette but orange tail and white forehead missing."
+      }
+    ],
+    "user_correction": {
+      "confirmed_species": "European Robin",
+      "scientific_name": "Erithacus rubecula",
+      "is_correct_prediction": true,
+      "correction_notes": "Close-up garden observation in Zurich."
+    }
+  },
+  {
+    "id": "bench-002",
+    "created_at": "2026-05-20T11:00:00Z",
+    "modality": "image",
+    "observation_context": {
+      "observation_date": "2026-05-20",
+      "observation_time": "11:00:00",
+      "location_text": "Cantabria, Spain",
+      "latitude": 43.4593,
+      "longitude": -3.7295
+    },
+    "candidates": [
+      {
+        "common_name": "European Stonechat",
+        "scientific_name": "Saxicola rubicola",
+        "confidence_probability": 95,
+        "reason": "Male with distinct black head, white neck patch, orange breast."
+      }
+    ],
+    "user_correction": {
+      "confirmed_species": "European Stonechat",
+      "scientific_name": "Saxicola rubicola",
+      "is_correct_prediction": true,
+      "correction_notes": "Perched on fence post in coastal dunes."
+    }
+  },
+  {
+    "id": "bench-003",
+    "created_at": "2026-05-20T12:00:00Z",
+    "modality": "image",
+    "observation_context": {
+      "observation_date": "2026-05-20",
+      "observation_time": "12:00:00",
+      "location_text": "Zurich, Switzerland",
+      "latitude": 47.3715,
+      "longitude": 8.6697
+    },
+    "candidates": [
+      {
+        "common_name": "Common Buzzard",
+        "scientific_name": "Buteo buteo",
+        "confidence_probability": 85,
+        "reason": "Broad-winged raptor shape, mottled brown plumage."
+      },
+      {
+        "common_name": "Eurasian Kestrel",
+        "scientific_name": "Falco tinnunculus",
+        "confidence_probability": 15,
+        "reason": "Pointed wings and slimmer build less consistent."
+      }
+    ],
+    "user_correction": {
+      "confirmed_species": "Common Buzzard",
+      "scientific_name": "Buteo buteo",
+      "is_correct_prediction": true,
+      "correction_notes": "Seen circling over woodland edge."
+    }
+  },
+  {
+    "id": "bench-004",
+    "created_at": "2026-05-20T13:00:00Z",
+    "modality": "image",
+    "observation_context": {
+      "observation_date": "2026-05-20",
+      "observation_time": "13:00:00",
+      "location_text": "Zurich, Switzerland",
+      "latitude": 47.3744,
+      "longitude": 8.5410
+    },
+    "candidates": [
+      {
+        "common_name": "Common Chaffinch",
+        "scientific_name": "Fringilla coelebs",
+        "confidence_probability": 40,
+        "reason": "Distant silhouette perched on utility wire."
+      },
+      {
+        "common_name": "House Sparrow",
+        "scientific_name": "Passer domesticus",
+        "confidence_probability": 35,
+        "reason": "Compact passerine silhouette."
+      }
+    ],
+    "merlin_suggestion": {
+      "species_name": "Common Chaffinch",
+      "notes": "Merlin photo candidate on wire"
+    },
+    "user_correction": {
+      "confirmed_species": "House Sparrow",
+      "scientific_name": "Passer domesticus",
+      "is_correct_prediction": false,
+      "correction_notes": "Followed with binoculars, confirmed female house sparrow."
+    }
+  },
+  {
+    "id": "bench-005",
+    "created_at": "2026-05-20T14:00:00Z",
+    "modality": "audio",
+    "observation_context": {
+      "observation_date": "2026-05-20",
+      "observation_time": "14:00:00",
+      "location_text": "Zurich, Switzerland",
+      "latitude": 47.3769,
+      "longitude": 8.5417
+    },
+    "candidates": [
+      {
+        "common_name": "Eurasian Blue Tit",
+        "scientific_name": "Cyanistes caeruleus",
+        "confidence_probability": 75,
+        "reason": "Rapid high trill call sequence."
+      },
+      {
+        "common_name": "Great Tit",
+        "scientific_name": "Parus major",
+        "confidence_probability": 25,
+        "reason": "Two-note 'tea-cher' call variant."
+      }
+    ],
+    "merlin_suggestion": {
+      "species_name": "Great Tit",
+      "notes": "Merlin audio suggestion from recording"
+    },
+    "user_correction": {
+      "confirmed_species": "Eurasian Blue Tit",
+      "scientific_name": "Cyanistes caeruleus",
+      "is_correct_prediction": true,
+      "correction_notes": "Visually spotted singing blue tit during audio recording. Merlin was wrong."
+    }
+  }
+]

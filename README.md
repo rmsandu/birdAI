@@ -124,15 +124,21 @@ A central contribution of BirdAI is reliable, reproducible evaluation over real-
 
 ### Running the Evaluator
 
-Evaluate against the included benchmark dataset (`data/evaluation_samples/seed_benchmark.json`) or your own accumulated observations in `data/`:
+Evaluate against the included benchmark dataset (`data/evaluation_samples/seed_benchmark.json`) or the observations you've recorded in the app database (`DATABASE_URL`, default `data/birdai.db`). Only observations you've confirmed or corrected in the app are scored.
 
 ```bash
 # Run against seed benchmark
 PYTHONPATH=src python scripts/evaluate.py --benchmark data/evaluation_samples/seed_benchmark.json
 
-# Run against all verified field observations in data/
-PYTHONPATH=src python scripts/evaluate.py --data-dir data
+# Run against all users' verified observations in the database
+PYTHONPATH=src python scripts/evaluate.py
+
+# Only one user's observations, or a different database
+PYTHONPATH=src python scripts/evaluate.py --user you@example.com
+PYTHONPATH=src python scripts/evaluate.py --database-url sqlite:///path/to/other.db
 ```
+
+Legacy JSON observations in `data/observations/` must be imported first with `scripts/migrate_json_to_db.py`.
 
 ### Reported Metrics
 
