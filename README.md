@@ -166,8 +166,18 @@ Legacy JSON observations in `data/observations/` must be imported first with `sc
 
 ## Testing
 
-Run the automated test suite:
+Run the automated test suite and linter:
 
 ```bash
 PYTHONPATH=src pytest
+ruff check .
 ```
+
+### Continuous Integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request to `master`:
+
+1. **Lint & test**: `ruff` and `pytest` on Python 3.14 (from `.python-version`), with no API keys set, so tests can never hit real Gemini or eBird.
+2. **Docker build**: builds the app image (not pushed), checks `/health` responds, and fails if a `.env` or database file ended up inside the image.
+
+The classifier image isn't built in CI yet because its checkpoint isn't stored in git. There's no deployment step yet.
