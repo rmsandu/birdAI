@@ -80,35 +80,45 @@ PYTHONPATH=src ./.venv/bin/pytest tests/ -v
 
 # Walkthrough: Phase 2 — Natural-Language Sightings Chatbot
 
-BirdAI can now answer questions such as *"Have any kingfishers been seen within 5 km of Neeracherried?"* using live data from **eBird** and **ornitho.ch**.
+BirdAI can now answer questions such as *"Have any kingfishers been seen within 5 km of Neeracherried?"*, *"Gibt es Eulen bei Zürich?"* or *"Avez-vous vu des pics près de Genève?"* using live **eBird** data. ornitho.ch support exists but is **parked** (see section 6).
 
 ## What Changed
 
 ### 1. Endpoints ([src/birdai/api/routes.py](../src/birdai/api/routes.py))
 Both endpoints require a signed-in user (`Authorization: Bearer <token>`), like the observation routes. This protects the Gemini quota and the eBird API key from anonymous use.
-- `POST /api/chat`: takes `message`, optional `conversation_history`, GPS coordinates and a preferred radius; returns `reply`, `sightings` and the `parsed_query`.
-- `GET /api/sightings`: direct query by `location` or `lat`/`lng`, `radius_km` (1–50) and `species`.
+- `POST /api/chat`: takes `message`, optional `conversation_history`, GPS coordinates and a preferred radius. Returns `reply`, `sightings`, `parsed_query`, `mode` (`"ai"` or `"rule_based"`) and `unavailable_sources`.
+- `GET /api/sightings`: direct query by `location` or `lat`/`lng`, `radius_km` (1–50) and `species` (any language, or a group like `owl`). Returns `{sightings, unavailable_sources}`.
 
 ### 2. Chat agent ([src/birdai/chat_agent.py](../src/birdai/chat_agent.py))
-- Gemini function calling: the model calls `search_bird_sightings` (location, radius, species, days back). The search result goes back to Gemini as a proper function response, and Gemini writes the answer, citing `[eBird]` / `[ornitho.ch]` per record.
+- **Agent loop:** Gemini may call `search_bird_sightings` up to `MAX_TOOL_ROUNDS` (3) times per message, e.g. to retry a species with a wider radius or to look up two birds. Each result goes back as a function response. After the last round, tool calling is switched off (`mode="NONE"`) so Gemini must answer with what it has.
+- Replies in the user's language. For group searches it summarises up to ~6 species; with more, it summarises the nearest few and asks whether to focus on one.
 - Earlier turns in `conversation_history` are sent to Gemini (`assistant` → `model`, `system` messages skipped), so follow-ups like *"and within 5 km?"* work.
-- Without a Gemini key, or if Gemini fails, a rule-based fallback recognises common Swiss places and birds (English/German names) and builds a templated answer. It does not use conversation history.
+- **Rule-based fallback** (no Gemini key, or Gemini fails): detects bird names anywhere in the message in all four languages (see section 4), plus some Swiss places and 5/15/25 km. It says so in the reply (*Basic search mode*) and doesn't use conversation history.
 
 ### 3. Sightings aggregator ([src/birdai/sightings_aggregator.py](../src/birdai/sightings_aggregator.py))
 - Search centre: GPS → known Swiss hotspots → geocoding → configured default location.
-- Queries eBird and ornitho.ch; if one fails, results from the other are still returned.
+- **Species search:** fetches everything seen in the area (uncapped), matches the query against those species' names, then fetches full sightings for each match (nearest `MAX_SPECIES_PER_SEARCH` = 10 species). `parsed_query` includes `matched_species` (names in all four languages), `species_match_type` (`species` / `group` / `none`) and `species_not_fetched`.
+- Failed sources are reported in `unavailable_sources` and in the reply, so "couldn't check" is never shown as "no birds".
 - Enforces the radius and sorts **closest first, most recent first** among equal distances.
 
-### 4. eBird radius searches ([src/birdai/ebird_client.py](../src/birdai/ebird_client.py))
-- All recent, single-species and notable sightings, sharing one `_sightings_in_radius` helper. Each result has a distance and an eBird checklist link.
+### 4. Multilingual species matching ([src/birdai/species_search.py](../src/birdai/species_search.py))
+Uses eBird's own localized names (taxonomy API, `en`/`de`/`fr`/`it`, cached per species):
+- Exact names in any language or Latin: *Eisvogel*, *Martin pescatore*, *Alcedo atthis*.
+- Partial names and plurals: *kingfishers*, *red kite*, *hiboux*; German compound heads: *Meise* → Kohlmeise, Blaumeise.
+- Groups: eBird family names are English-only, so a small alias table maps group words in all four languages (*Eulen*, *chouette*, *gufo* → Owls; also woodpeckers, tits, ducks/waterfowl, gulls, herons, birds of prey, finches, grebes).
+- Known limitation: *ducks* uses the eBird family "Ducks, Geese, and Waterfowl", so geese and swans are included.
 
-### 5. ornitho.ch client ([src/birdai/ornitho_client.py](../src/birdai/ornitho_client.py))
-- Reads the public "notable observations" RSS feed. The feed has no coordinates, so each record is placed by matching its location (from the title, e.g. `… - Neeracherried ZH`) against known Swiss hotspots.
-- Records whose location can't be matched are **skipped**, not guessed. If the feed is unreachable, ornitho.ch contributes no results. No placeholder or sample data is ever returned.
-- RSS dates are normalised to `YYYY-MM-DD HH:MM` to match eBird and sort correctly.
+### 5. eBird client ([src/birdai/ebird_client.py](../src/birdai/ebird_client.py))
+- All recent, single-species and notable radius searches share one helper; each result has a species code, distance and checklist link. `max_results=None` fetches everything for the area.
+- `species_names()` returns localized names for a set of species codes.
+
+### 6. ornitho.ch client — parked ([src/birdai/ornitho_client.py](../src/birdai/ornitho_client.py))
+- The RSS URL it used returns ornitho.ch's **login page**; there is no public feed. It's off by default (`ORNITHO_ENABLED=false`) and is not queried or mentioned in replies.
+- Re-enable it once there's API access (Swiss Ornithological Institute / Biolovision). The client already skips records with unknown locations, never returns placeholder data, and raises `OrnithoServiceError` when unreachable.
 
 ## Tests
-- `tests/test_chat_agent.py`: heuristics, fallback answer, history conversion, Gemini tool-call round trip (mocked), sort order.
-- `tests/test_sightings_aggregator.py`: centre resolution, merging sources, radius enforcement.
+- `tests/test_species_search.py`: names in all four languages, groups, plurals, compounds, free-text detection, false positives (*tit* ≠ *Tree Pipit*, *Reiher* ≠ *Reiherente*).
+- `tests/test_chat_agent.py`: agent loop (history, follow-up searches, forced answer after 3 rounds, all sources down, Gemini failure), rule-based fallback.
+- `tests/test_sightings_aggregator.py`: centre resolution, merging, radius enforcement, uncapped multilingual species search, owl group, lookup cap, ornitho parked, failed-source reporting.
 - `tests/test_ornitho_client.py`: RSS parsing, radius filtering, skipping unknown locations, unreachable feed.
 - `tests/test_api_chat.py`: 401 without login, chat and sightings responses (aggregator mocked, no network).
