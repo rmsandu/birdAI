@@ -297,7 +297,7 @@ def chat_sightings(
     request: ChatRequest,
     current_user: UserModel = Depends(get_current_active_user),
 ) -> ChatResponse:
-    """Natural language bird sightings assistant powered by eBird and ornitho.ch."""
+    """Natural-language bird sightings assistant (eBird; ornitho.ch when enabled)."""
     return chat_agent.process_query(
         message=request.message,
         conversation_history=request.conversation_history,
@@ -311,12 +311,16 @@ def chat_sightings(
 def get_recent_sightings(
     location: Optional[str] = Query(None, description="City or landmark name"),
     radius_km: int = Query(15, ge=1, le=50, description="Radius in km (5, 15, 25)"),
-    species: Optional[str] = Query(None, description="Species common or scientific name"),
+    species: Optional[str] = Query(
+        None, description="Species or group, any of EN/DE/FR/IT/Latin (e.g. 'Eisvogel', 'owl')"
+    ),
     lat: Optional[float] = Query(None),
     lng: Optional[float] = Query(None),
     current_user: UserModel = Depends(get_current_active_user),
 ) -> SightingsResponse:
-    """Direct REST query for recent sightings from eBird and ornitho.ch.
+    """Recent sightings from eBird (and ornitho.ch when enabled).
+
+    ``species`` may be a species or bird group in English, German, French, Italian or Latin.
 
     ``unavailable_sources`` lists any source that failed, so an empty list of sightings
     can be told apart from "couldn't check".

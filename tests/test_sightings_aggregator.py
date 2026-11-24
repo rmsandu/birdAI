@@ -119,6 +119,97 @@ def test_describe_unavailable_sources():
     assert "couldn't check" in total and "doesn't mean there are no birds" in total
 
 
+def _species_names():
+    from birdai.species_search import SpeciesNames
+
+    return [
+        SpeciesNames("comkin1", "Alcedo atthis", "Kingfishers",
+                     {"en": "Common Kingfisher", "de": "Eisvogel", "fr": "Martin-pêcheur d'Europe", "it": "Martin pescatore"}),
+        SpeciesNames("barowl2", "Tyto alba", "Barn-Owls",
+                     {"en": "Western Barn Owl", "de": "Schleiereule", "fr": "Effraie des clochers", "it": "Barbagianni"}),
+        SpeciesNames("tawowl1", "Strix aluco", "Owls",
+                     {"en": "Tawny Owl", "de": "Waldkauz", "fr": "Chouette hulotte", "it": "Allocco"}),
+        SpeciesNames("mallar3", "Anas platyrhynchos", "Ducks, Geese, and Waterfowl",
+                     {"en": "Mallard", "de": "Stockente", "fr": "Canard colvert", "it": "Germano reale"}),
+    ]
+
+
+def _area_sighting(code, name, distance):
+    return SightingItem(species_common_name=name, species_code=code, observed_at="2026-11-22 08:00",
+                        location_name="Somewhere", latitude=47.4, longitude=8.5,
+                        distance_km=distance, source="ebird")
+
+
+def _mock_ebird_for_species_search():
+    ebird = MagicMock()
+    # One record per species in the area, like eBird's geo/recent endpoint
+    ebird.recent_sightings_in_radius.return_value = [
+        _area_sighting("mallar3", "Mallard", 1.0),
+        _area_sighting("tawowl1", "Tawny Owl", 3.0),
+        _area_sighting("comkin1", "Common Kingfisher", 2.0),
+        _area_sighting("barowl2", "Western Barn Owl", 8.0),
+    ]
+    ebird.species_names.return_value = _species_names()
+    # Full sightings for one species
+    ebird.recent_species_sightings_in_radius.side_effect = lambda species_code, **kw: [
+        _area_sighting(species_code, species_code, d) for d in (2.0, 5.0)
+    ]
+    return ebird
+
+
+def test_species_search_is_multilingual_and_uncapped():
+    ebird = _mock_ebird_for_species_search()
+    agg = SightingsAggregator(ebird_client=ebird)
+
+    results, meta = agg.search_sightings(location_name="Zurich", radius_km=25, species_name="Eisvogel")
+
+    # The area listing is fetched without the 40-result cap
+    assert ebird.recent_sightings_in_radius.call_args.kwargs["max_results"] is None
+    ebird.recent_species_sightings_in_radius.assert_called_once()
+    assert ebird.recent_species_sightings_in_radius.call_args.kwargs["species_code"] == "comkin1"
+    assert len(results) == 2
+    assert meta["species_match_type"] == "species"
+    assert [m["species_code"] for m in meta["matched_species"]] == ["comkin1"]
+    assert meta["matched_species"][0]["common_names"]["de"] == "Eisvogel"
+
+
+def test_group_search_returns_all_owls_nearest_first():
+    ebird = _mock_ebird_for_species_search()
+    agg = SightingsAggregator(ebird_client=ebird)
+
+    results, meta = agg.search_sightings(location_name="Zurich", radius_km=25, species_name="Eulen")
+
+    assert meta["species_match_type"] == "group"
+    assert [m["species_code"] for m in meta["matched_species"]] == ["tawowl1", "barowl2"]
+    assert {s.species_code for s in results} == {"tawowl1", "barowl2"}
+    assert meta["species_not_fetched"] == 0
+
+
+def test_group_search_caps_detailed_lookups(monkeypatch):
+    import birdai.sightings_aggregator as agg_module
+
+    monkeypatch.setattr(agg_module, "MAX_SPECIES_PER_SEARCH", 1)
+    ebird = _mock_ebird_for_species_search()
+    results, meta = SightingsAggregator(ebird_client=ebird).search_sightings(
+        location_name="Zurich", species_name="owl"
+    )
+
+    assert ebird.recent_species_sightings_in_radius.call_count == 1
+    assert meta["species_not_fetched"] == 1
+    assert meta["matched_species"][1]["sightings_count"] is None  # listed, not fetched
+
+
+def test_free_text_without_bird_lists_all_species():
+    ebird = _mock_ebird_for_species_search()
+    results, meta = SightingsAggregator(ebird_client=ebird).search_sightings(
+        location_name="Zurich", species_name="What birds are near Zurich?", species_in_free_text=True
+    )
+
+    assert meta["species_filter_applied"] is False
+    assert len(results) == 4
+    ebird.recent_species_sightings_in_radius.assert_not_called()
+
+
 def test_ornitho_is_parked_by_default():
     agg = SightingsAggregator(ebird_client=MagicMock())
     assert agg.ornitho_client is None
