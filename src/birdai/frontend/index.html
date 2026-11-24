@@ -3,101 +3,283 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#123F2A">
+  <meta name="theme-color" content="#022218">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>BirdAI — Multimodal Bird Perception</title>
+  <title>BirdAI — Live Field ID</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/png" href="/static/icon.png">
   <link rel="apple-touch-icon" href="/static/icon.png">
   <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 
-  <!-- Top App Navigation -->
-  <header class="app-header">
-    <div class="brand">
-      <span>🦅 BirdAI</span>
-      <span class="brand-badge">Stitch UI</span>
-    </div>
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <nav class="nav-links">
-        <button id="nav-new" class="nav-btn active">Capture</button>
-        <button id="nav-journal" class="nav-btn">Journal</button>
-      </nav>
-      <div id="user-nav-section" class="user-nav">
-        <button id="btn-open-auth" class="btn-auth">Sign In</button>
-        <div id="user-profile-badge" class="user-badge" style="display: none;">
-          <span id="user-email-display" class="user-email"></span>
-          <button id="btn-logout" class="btn-logout" title="Sign Out">Sign Out</button>
+  <!-- Fixed Glassmorphic Top Header -->
+  <header class="top-header">
+    <div class="header-inner">
+      <div class="brand-cluster">
+        <div class="brand-logo-wrap">
+          <img src="/static/icon.png" alt="BirdAI Logo" class="brand-logo">
+        </div>
+        <div class="brand-meta">
+          <div class="brand-title-row">
+            <span class="brand-name">BirdAI</span>
+            <span class="brand-subtitle">• Field ID</span>
+          </div>
+          <button type="button" id="header-location-btn" class="location-pill-btn" title="Edit field location or detect GPS">
+            <span class="material-symbols-outlined icon-xs text-secondary">near_me</span>
+            <span id="header-location-text" class="location-truncate">Set field location or GPS</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" id="btn-quick-search" class="icon-btn" aria-label="Search nearby sightings" title="Sightings Radar">
+          <span class="material-symbols-outlined">search</span>
+        </button>
+
+        <div id="user-nav-section" class="user-nav">
+          <button type="button" id="btn-open-auth" class="btn-auth-pill" aria-label="Sign in">
+            <span class="material-symbols-outlined icon-sm">person</span>
+            <span>Sign In</span>
+          </button>
+          <div id="user-profile-badge" class="user-badge" style="display: none;">
+            <span id="user-avatar-initials" class="user-avatar" aria-hidden="true">U</span>
+            <span id="user-email-display" class="user-email"></span>
+            <button type="button" id="btn-logout" class="btn-logout" title="Sign Out" aria-label="Sign Out">
+              <span class="material-symbols-outlined icon-xs">logout</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- Main View -->
+  <!-- Main Workspace -->
   <main class="app-main">
-    
-    <!-- Capture & Input View -->
-    <div id="capture-view" style="display: contents;">
-      
-      <!-- Left Panel: Observation Input -->
-      <section class="card">
-        <h2 class="card-title">
-          <span>Observation Media</span>
-          <span style="font-size: 0.75rem; font-weight: 600; color: var(--color-tan);">Camera / Audio</span>
-        </h2>
 
-        <!-- Hidden Native File Inputs -->
-        <input type="file" id="image-file-input" accept="image/*" capture="environment" style="display: none;">
-        <input type="file" id="audio-file-input" accept="audio/*" style="display: none;">
+    <!-- VIEW 1: IDENTIFY (Live Field ID) -->
+    <section id="capture-view" class="view-section active" aria-label="Live Field Identification">
 
-        <!-- Dropzone / Mobile Selector -->
-        <div id="dropzone" class="dropzone">
-          <div class="dropzone-icons">📷 🎙️</div>
-          <div class="dropzone-text">Tap or drop bird image / audio</div>
-          <div class="dropzone-subtext">JPEG, PNG, HEIC, WAV, MP3, FLAC supported</div>
-        </div>
+      <!-- Hidden Native File Inputs -->
+      <input type="file" id="image-file-input" accept="image/*" capture="environment" hidden>
+      <input type="file" id="audio-file-input" accept="audio/*" hidden>
 
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button type="button" class="btn-secondary" style="flex: 1;" onclick="document.getElementById('image-file-input').click()">
-            📷 Take Photo / Pick Image
+      <!-- Mode Selector Floating Pill Switch -->
+      <div class="mode-switch-wrap">
+        <div class="mode-switch" role="tablist" aria-label="Capture modality">
+          <button type="button" role="tab" aria-selected="true" class="mode-btn active" id="mode-hybrid" data-mode="hybrid">
+            <span class="material-symbols-outlined icon-sm">sensors</span>
+            <span>Dual Capture</span>
           </button>
-          <button type="button" class="btn-secondary" style="flex: 1;" onclick="document.getElementById('audio-file-input').click()">
-            🎙️ Add Sound / Merlin WAV
+          <button type="button" role="tab" aria-selected="false" class="mode-btn" id="mode-optic" data-mode="optic">
+            <span class="material-symbols-outlined icon-sm">photo_camera</span>
+            <span>Visual Only</span>
+          </button>
+          <button type="button" role="tab" aria-selected="false" class="mode-btn" id="mode-acoustic" data-mode="acoustic">
+            <span class="material-symbols-outlined icon-sm">graphic_eq</span>
+            <span>Acoustic</span>
           </button>
         </div>
+      </div>
 
-        <!-- Previews -->
-        <div class="media-previews">
-          <div id="image-preview-container" class="preview-container" style="display: none;">
-            <img id="image-preview" alt="Bird Observation Preview">
+      <!-- Primary Viewfinder Container -->
+      <div id="dropzone" class="viewfinder-card" aria-label="Bird observation viewfinder">
+        <!-- Empty Atmospheric Background -->
+        <div id="viewfinder-empty" class="viewfinder-empty">
+          <div class="viewfinder-empty-badge">
+            <span class="material-symbols-outlined">add_a_photo</span>
           </div>
-          <div id="audio-preview-container" class="audio-preview" style="display: none;">
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-pine);">Audio File Selected:</span>
-            <audio id="audio-preview" controls></audio>
+          <p class="viewfinder-empty-title">Tap or drop bird photo / audio</p>
+          <p class="viewfinder-empty-sub">JPEG, PNG, HEIC, WAV, MP3, FLAC • Auto EXIF GPS</p>
+        </div>
+
+        <!-- Uploaded Image Preview Layer -->
+        <div id="image-preview-container" class="viewfinder-media" style="display: none;">
+          <img id="image-preview" alt="Bird Observation Preview">
+        </div>
+
+        <!-- Vignette & HUD Gradient Overlay -->
+        <div class="viewfinder-vignette" aria-hidden="true"></div>
+
+        <!-- Top HUD Telemetry Bar -->
+        <div class="hud-top">
+          <div class="hud-row">
+            <div class="hud-pill hud-pill-live">
+              <span class="live-dot-wrap" aria-hidden="true">
+                <span class="live-dot-ping"></span>
+                <span class="live-dot"></span>
+              </span>
+              <span id="hud-tracking-label">AI Live Tracking</span>
+            </div>
+            <div class="hud-pill hud-pill-meter">
+              <span class="material-symbols-outlined icon-xs text-amber">wb_sunny</span>
+              <span id="hud-meter-label">Dual • Ready</span>
+            </div>
+          </div>
+
+          <!-- Compact Environmental Chips -->
+          <div class="env-chips">
+            <button type="button" class="env-chip" id="chip-gps" title="Use GPS or edit coordinates">
+              <span class="material-symbols-outlined icon-xs text-mint">near_me</span>
+              <span id="chip-gps-text">GPS Auto</span>
+            </button>
+            <button type="button" class="env-chip" id="chip-time" title="Edit date and time">
+              <span class="material-symbols-outlined icon-xs text-amber">schedule</span>
+              <span id="chip-time-text">EXIF Time</span>
+            </button>
+            <button type="button" class="env-chip" id="chip-context" title="Edit location and Merlin notes">
+              <span class="material-symbols-outlined icon-xs text-primary-fixed">forest</span>
+              <span id="chip-context-text">Field Context</span>
+            </button>
           </div>
         </div>
 
-        <!-- Location Context -->
+        <!-- Optical AI Bounding Box Reticle -->
+        <div id="optical-reticle" class="optical-reticle" aria-hidden="true">
+          <span class="reticle-corner tl"></span>
+          <span class="reticle-corner tr"></span>
+          <span class="reticle-corner bl"></span>
+          <span class="reticle-corner br"></span>
+          <span class="reticle-center"></span>
+          <div class="reticle-lock-pill">
+            <span class="material-symbols-outlined icon-xs text-mint">center_focus_strong</span>
+            <span id="reticle-lock-text">Lock: Awaiting Specimen</span>
+          </div>
+        </div>
+
+        <!-- Bioacoustic Spectrogram Mini-HUD Overlay -->
+        <div id="acoustic-hud" class="spectrogram-hud">
+          <div class="spectrogram-header">
+            <div class="spectrogram-title">
+              <span class="material-symbols-outlined icon-sm text-mint pulse-soft">graphic_eq</span>
+              <span>BIOACOUSTIC SPECTROGRAM</span>
+            </div>
+            <span id="spectrogram-freq-label" class="spectrogram-freq">2.4 kHz — 7.8 kHz</span>
+          </div>
+
+          <div id="spectrogram-bars" class="spectrogram-bars" aria-hidden="true">
+            <div class="spec-bar" style="--h: 30%;"></div>
+            <div class="spec-bar" style="--h: 55%;"></div>
+            <div class="spec-bar" style="--h: 85%;"></div>
+            <div class="spec-bar peak" style="--h: 95%;"></div>
+            <div class="spec-bar" style="--h: 70%;"></div>
+            <div class="spec-bar" style="--h: 40%;"></div>
+            <div class="spec-bar" style="--h: 22%;"></div>
+            <div class="spec-bar" style="--h: 60%;"></div>
+            <div class="spec-bar peak" style="--h: 90%;"></div>
+            <div class="spec-bar" style="--h: 65%;"></div>
+            <div class="spec-bar" style="--h: 35%;"></div>
+            <div class="spec-bar" style="--h: 20%;"></div>
+            <div class="spec-bar" style="--h: 48%;"></div>
+            <div class="spec-bar" style="--h: 78%;"></div>
+            <div class="spec-bar" style="--h: 52%;"></div>
+            <div class="spec-bar" style="--h: 28%;"></div>
+          </div>
+
+          <div class="spectrogram-footer">
+            <span class="spectrogram-status">
+              <span class="status-dot"></span>
+              <span id="audio-hud-status">No audio clip attached</span>
+            </span>
+            <button type="button" id="btn-audio-play" class="spectrogram-play-btn" style="display: none;">
+              <span class="material-symbols-outlined icon-xs">play_arrow</span>
+              <span>Play</span>
+            </button>
+            <span id="audio-hud-score" class="spectrogram-score">Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden/Compact Audio Element Container -->
+      <div id="audio-preview-container" class="audio-inline-bar" style="display: none;">
+        <div class="audio-inline-header">
+          <span class="material-symbols-outlined icon-sm text-secondary">audio_file</span>
+          <span id="audio-filename-label" class="audio-filename">Audio selected</span>
+          <button type="button" id="btn-clear-audio" class="text-btn">Remove</button>
+        </div>
+        <audio id="audio-preview" controls></audio>
+      </div>
+
+      <!-- Real-Time AI Species Match Result Drawer -->
+      <div id="match-drawer" class="match-drawer">
+        <div class="match-drawer-top">
+          <div class="match-identity">
+            <div class="match-thumb-wrap">
+              <img id="match-thumb" src="/static/icon.png" alt="Species thumbnail" class="match-thumb">
+              <div id="match-check-badge" class="match-check-badge" style="display: none;">
+                <span class="material-symbols-outlined">check</span>
+              </div>
+            </div>
+            <div class="match-names">
+              <div class="match-title-row">
+                <span id="match-common-name" class="match-common">Awaiting Field Capture</span>
+                <span id="match-confidence-pill" class="match-pill" style="display: none;">--% Match</span>
+              </div>
+              <span id="match-scientific-name" class="match-sci">Upload a photo or call, then tap the shutter</span>
+            </div>
+          </div>
+          <button type="button" id="btn-open-results" class="match-arrow-btn" aria-label="Open detailed species analysis" title="Inspect full evidence">
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+        </div>
+
+        <div class="match-drawer-footer">
+          <div class="match-plausibility">
+            <span class="material-symbols-outlined icon-xs text-secondary">verified</span>
+            <span id="match-plausibility-text">Independent visual, audio &amp; checklist evidence</span>
+          </div>
+          <span id="match-hint-text" class="match-hint">Tap arrow for results</span>
+        </div>
+      </div>
+
+      <!-- Optics & Zoom Strip + Field Context Toggle -->
+      <div class="controls-strip">
+        <div class="zoom-group" role="group" aria-label="Viewfinder zoom">
+          <button type="button" class="zoom-btn" data-zoom="0.85">0.5x</button>
+          <button type="button" class="zoom-btn active" data-zoom="1">1x</button>
+          <button type="button" class="zoom-btn" data-zoom="1.5">2x</button>
+          <button type="button" class="zoom-btn" data-zoom="2.2">5x</button>
+          <button type="button" class="zoom-btn zoom-macro" data-zoom="2.8">
+            <span class="material-symbols-outlined icon-xs">macro_auto</span>
+            <span>Macro</span>
+          </button>
+        </div>
+
+        <button type="button" id="btn-toggle-context" class="context-toggle-btn" aria-expanded="false" aria-controls="field-context-drawer">
+          <span class="material-symbols-outlined icon-sm text-secondary">tune</span>
+          <span>Field Details</span>
+        </button>
+      </div>
+
+      <!-- Collapsible Field Context, GPS & Merlin Prior Drawer -->
+      <div id="field-context-drawer" class="context-drawer" hidden>
+        <div class="context-drawer-header">
+          <span class="context-drawer-title">Location, Time &amp; Merlin Prior</span>
+          <button type="button" id="btn-geolocation" class="btn-chip-gps">
+            <span class="material-symbols-outlined icon-xs">my_location</span>
+            <span>Use GPS</span>
+          </button>
+        </div>
+
         <div class="form-group">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <label class="form-label" for="location-text">Location Text</label>
-            <button id="btn-geolocation" type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 0.7rem;">📍 GPS</button>
-          </div>
-          <input type="text" id="location-text" class="form-input" value="" placeholder="Leave empty for photo GPS or enter location">
-          <span id="location-status" style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; display: block;"></span>
+          <label class="form-label" for="location-text">Location</label>
+          <input type="text" id="location-text" class="form-input" value="" placeholder="Auto-filled from photo EXIF or enter location">
+          <span id="location-status" class="field-status-note"></span>
         </div>
 
         <div class="grid-2 form-group">
           <div>
             <label class="form-label" for="latitude">Latitude</label>
-            <input type="number" id="latitude" class="form-input" step="any" placeholder="Auto-filled from photo">
+            <input type="number" id="latitude" class="form-input" step="any" placeholder="e.g. 47.3769">
           </div>
           <div>
             <label class="form-label" for="longitude">Longitude</label>
-            <input type="number" id="longitude" class="form-input" step="any" placeholder="Auto-filled from photo">
+            <input type="number" id="longitude" class="form-input" step="any" placeholder="e.g. 8.5417">
           </div>
         </div>
 
@@ -112,120 +294,221 @@
           </div>
         </div>
 
-        <!-- Merlin Audio Prior Section -->
         <div class="merlin-box">
           <div class="merlin-header">
             <span>Merlin Bird ID Suggestion (Optional)</span>
             <span class="unverified-tag">Unverified Prior</span>
           </div>
-          <input type="text" id="merlin-species" class="form-input" placeholder="e.g. Eurasian Blue Tit" style="margin-bottom: 8px;">
-          <input type="text" id="merlin-notes" class="form-input" placeholder="Optional notes from Merlin audio identification">
+          <input type="text" id="merlin-species" class="form-input" placeholder="e.g. Eurasian Blue Tit">
+          <input type="text" id="merlin-notes" class="form-input" placeholder="Optional notes from Merlin audio identification" style="margin-top: 8px;">
         </div>
-
-        <button id="btn-analyze" class="btn-primary">
-          <span>🔍 Analyze Observation</span>
-        </button>
-      </section>
-
-      <!-- Right Panel: Results & Evidence Workbench -->
-      <section class="results-pane">
-        
-        <!-- Loading Indicator -->
-        <div id="loading-container" class="card state-box" style="display: none;">
-          <div class="spinner"></div>
-          <p style="font-weight: 700; color: var(--color-pine);">Analyzing Observation...</p>
-          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 4px;">Evaluating multimodal perception models and contextual checklist plausibility.</p>
-        </div>
-
-        <!-- Candidates List -->
-        <div id="results-container" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--color-pine);">Species Candidates & Evidence</h2>
-            <span style="font-size: 0.75rem; color: var(--color-berry); font-weight: 700;">⚠ Heuristic Scores · Uncalibrated</span>
-          </div>
-          <div id="candidates-list"></div>
-        </div>
-
-        <!-- Initial Placeholder -->
-        <div id="initial-placeholder" class="card state-box">
-          <div style="font-size: 2.5rem; margin-bottom: 10px;">🔭</div>
-          <p style="font-weight: 700; color: var(--color-pine);">No Observation Submitted</p>
-          <p style="font-size: 0.85rem; color: var(--color-text-muted); max-width: 320px; margin: 6px auto 0;">
-            Upload an image or sound recording from the field. BirdAI exposes independent visual, audio, and checklist evidence so you can inspect and learn.
-          </p>
-        </div>
-
-      </section>
-
-    </div>
-
-    <!-- Journal View -->
-    <section id="journal-view" style="display: none; grid-column: 1 / -1;">
-      <div class="card-title">
-        <span>Observation Journal</span>
-        <span style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted);">Saved field reviews</span>
       </div>
-      <div id="journal-list"></div>
+
+      <!-- Primary Tactile Shutter Controls & Capture Actions -->
+      <div class="shutter-bar">
+        <div class="shutter-side">
+          <button type="button" id="btn-import-photo" class="side-action-btn" aria-label="Import photo with EXIF metadata">
+            <span class="material-symbols-outlined">photo_library</span>
+          </button>
+          <span class="side-action-label">Import EXIF</span>
+        </div>
+
+        <div class="shutter-center">
+          <div class="shutter-ring-outer" aria-hidden="true"></div>
+          <div class="shutter-ring-inner" aria-hidden="true"></div>
+          <button type="button" id="btn-analyze" class="shutter-btn" aria-label="Analyze bird observation" title="Analyze Observation">
+            <span class="shutter-btn-inner">
+              <span id="shutter-icon" class="material-symbols-outlined">lens</span>
+            </span>
+          </button>
+          <span id="shutter-caption" class="shutter-caption">Analyze ID</span>
+        </div>
+
+        <div class="shutter-side">
+          <button type="button" id="btn-import-audio" class="side-action-btn" aria-label="Attach bird audio recording">
+            <span class="material-symbols-outlined">mic</span>
+          </button>
+          <span class="side-action-label">Add Audio</span>
+        </div>
+      </div>
+
+      <!-- Subtle Field Observation Status Banner -->
+      <div class="status-banner">
+        <div class="status-banner-left">
+          <span class="material-symbols-outlined icon-sm text-secondary">cloud_done</span>
+          <span id="banner-status-text">Multimodal Perception Ready • Gemini + Local Classifier</span>
+        </div>
+        <span id="banner-mode-badge" class="status-banner-code">Dual-Modal</span>
+      </div>
+
+    </section>
+
+    <!-- VIEW 2: RESULTS (Species Candidates & Evidence Workbench) -->
+    <section id="results-view" class="view-section" aria-label="Identification Results">
+      <div class="section-header-row">
+        <div>
+          <h1 class="section-title">Specimen Analysis</h1>
+          <p class="section-subtitle">Multimodal visual, bioacoustic &amp; checklist evidence</p>
+        </div>
+        <span class="heuristic-badge">Heuristic · Uncalibrated</span>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading-container" class="surface-card state-box" style="display: none;">
+        <div class="spinner"></div>
+        <p class="state-title">Analyzing Observation…</p>
+        <p class="state-sub">Evaluating visual perception, acoustic cues, and regional checklist plausibility.</p>
+      </div>
+
+      <!-- Candidates List -->
+      <div id="results-container" style="display: none;">
+        <div id="candidates-list" class="candidates-stack"></div>
+      </div>
+
+      <!-- Initial Placeholder -->
+      <div id="initial-placeholder" class="surface-card state-box">
+        <div class="state-icon-circle">
+          <span class="material-symbols-outlined">analytics</span>
+        </div>
+        <p class="state-title">No Observation Submitted</p>
+        <p class="state-sub">Capture or import a bird photo or audio recording on the Identify tab to inspect independent visual, audio, and checklist evidence.</p>
+        <button type="button" class="btn-primary-inline" id="btn-go-identify">
+          <span class="material-symbols-outlined icon-sm">photo_camera</span>
+          <span>Go to Field ID</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 3: SIGHTINGS (Radar & Natural-Language Sightings Assistant) -->
+    <section id="sightings-view" class="view-section" aria-label="Nearby Sightings Radar">
+      <div class="section-header-row">
+        <div>
+          <h1 class="section-title">Sightings Radar</h1>
+          <p class="section-subtitle">Ask about recent eBird &amp; ornitho.ch sightings</p>
+        </div>
+        <span class="source-pill">Live Feed</span>
+      </div>
+
+      <div class="quick-prompts" aria-label="Quick sighting queries">
+        <button type="button" class="prompt-chip" data-query="What notable birds were seen near me recently?">Notable nearby</button>
+        <button type="button" class="prompt-chip" data-query="Any recent owl sightings within 25 km?">Owls nearby</button>
+        <button type="button" class="prompt-chip" data-query="Where was a kingfisher seen recently?">Kingfisher</button>
+      </div>
+
+      <div id="chat-messages" class="chat-feed">
+        <div class="chat-bubble assistant">
+          <p>Ask me about recent bird sightings in any language (EN, DE, FR, IT, or Latin) — e.g. <em>"Where was an Eisvogel seen near Zurich?"</em></p>
+        </div>
+      </div>
+
+      <form id="chat-form" class="chat-composer">
+        <input type="text" id="chat-input" class="form-input chat-input" placeholder="Ask about recent bird sightings…" autocomplete="off" required>
+        <button type="submit" id="btn-chat-send" class="chat-send-btn" aria-label="Send sighting query">
+          <span class="material-symbols-outlined">send</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- VIEW 4: LIFE LIST (Observation Journal) -->
+    <section id="journal-view" class="view-section" aria-label="Life List Journal">
+      <div class="section-header-row">
+        <div>
+          <h1 class="section-title">Life List Journal</h1>
+          <p class="section-subtitle">Saved field observations &amp; verified ground truth</p>
+        </div>
+        <button type="button" id="btn-refresh-journal" class="icon-btn-subtle" aria-label="Refresh life list" title="Refresh">
+          <span class="material-symbols-outlined icon-sm">refresh</span>
+        </button>
+      </div>
+      <div id="journal-list" class="journal-stack"></div>
     </section>
 
   </main>
 
-  <!-- User Authentication Modal -->
-  <div id="auth-modal" class="modal-overlay">
-    <div class="modal-sheet" style="max-width: 380px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <div class="auth-tabs">
-          <button id="tab-login" class="tab-btn active" type="button">Sign In</button>
-          <button id="tab-register" class="tab-btn" type="button">Create Account</button>
-        </div>
-        <button id="auth-modal-close" class="btn-secondary" style="padding: 4px 10px;">✕</button>
+  <!-- Fixed Glassmorphic Bottom Navigation Bar -->
+  <nav class="bottom-nav" aria-label="Primary navigation">
+    <div class="bottom-nav-inner">
+      <button type="button" class="bottom-nav-item active" id="nav-new" data-view="new" aria-current="page">
+        <span class="material-symbols-outlined">photo_camera</span>
+        <span>Identify</span>
+      </button>
+      <button type="button" class="bottom-nav-item" id="nav-results" data-view="results">
+        <span class="material-symbols-outlined">analytics</span>
+        <span>Results</span>
+      </button>
+      <button type="button" class="bottom-nav-item" id="nav-sightings" data-view="sightings">
+        <span class="material-symbols-outlined">radar</span>
+        <span>Sightings</span>
+      </button>
+      <button type="button" class="bottom-nav-item" id="nav-journal" data-view="journal">
+        <span class="material-symbols-outlined">menu_book</span>
+        <span>Life List</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Native Modal Dialog: User Authentication -->
+  <dialog id="auth-modal" class="native-dialog" closedby="any" aria-labelledby="auth-modal-title">
+    <div class="dialog-card dialog-card-sm">
+      <div class="dialog-header">
+        <h1 id="auth-modal-title" class="dialog-title">BirdAI Account</h1>
+        <button type="button" id="auth-modal-close" class="icon-btn-subtle" aria-label="Close sign in dialog">
+          <span class="material-symbols-outlined icon-sm">close</span>
+        </button>
+      </div>
+
+      <div class="auth-tabs" role="tablist">
+        <button id="tab-login" class="auth-tab-btn active" type="button" role="tab" aria-selected="true">Sign In</button>
+        <button id="tab-register" class="auth-tab-btn" type="button" role="tab" aria-selected="false">Create Account</button>
       </div>
 
       <!-- Sign In Form -->
       <form id="form-login">
         <div class="form-group">
           <label class="form-label" for="login-email">Email</label>
-          <input type="email" id="login-email" class="form-input" required placeholder="name@example.com">
+          <input type="email" id="login-email" class="form-input" required autofocus placeholder="name@example.com" autocomplete="email">
         </div>
         <div class="form-group">
           <label class="form-label" for="login-password">Password</label>
-          <input type="password" id="login-password" class="form-input" required placeholder="••••••••">
+          <input type="password" id="login-password" class="form-input" required placeholder="••••••••" autocomplete="current-password">
         </div>
         <div id="login-error" class="auth-error" style="display: none;"></div>
-        <button type="submit" class="btn-primary" style="margin-top: 14px;">Sign In</button>
+        <button type="submit" class="btn-primary-full">Sign In</button>
       </form>
 
       <!-- Register Form -->
       <form id="form-register" style="display: none;">
         <div class="form-group">
           <label class="form-label" for="register-name">Full Name (Optional)</label>
-          <input type="text" id="register-name" class="form-input" placeholder="Field Naturalist">
+          <input type="text" id="register-name" class="form-input" placeholder="Field Naturalist" autocomplete="name">
         </div>
         <div class="form-group">
           <label class="form-label" for="register-email">Email</label>
-          <input type="email" id="register-email" class="form-input" required placeholder="name@example.com">
+          <input type="email" id="register-email" class="form-input" required placeholder="name@example.com" autocomplete="email">
         </div>
         <div class="form-group">
           <label class="form-label" for="register-password">Password</label>
-          <input type="password" id="register-password" class="form-input" required minlength="8" placeholder="At least 8 characters">
+          <input type="password" id="register-password" class="form-input" required minlength="8" placeholder="At least 8 characters" autocomplete="new-password">
         </div>
         <div id="register-error" class="auth-error" style="display: none;"></div>
-        <button type="submit" class="btn-primary" style="margin-top: 14px;">Create Account</button>
+        <button type="submit" class="btn-primary-full">Create Account</button>
       </form>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Human Verification / Correction Modal -->
-  <div id="correction-modal" class="modal-overlay">
-    <div class="modal-sheet">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--color-pine);">Verify or Correct Species</h3>
-        <button id="modal-close" class="btn-secondary" style="padding: 4px 10px;">✕</button>
+  <!-- Native Modal Dialog: Human Verification / Correction -->
+  <dialog id="correction-modal" class="native-dialog" closedby="any" aria-labelledby="correction-modal-title">
+    <div class="dialog-card">
+      <div class="dialog-header">
+        <h1 id="correction-modal-title" class="dialog-title">Verify or Correct Species</h1>
+        <button type="button" id="modal-close" class="icon-btn-subtle" aria-label="Close verification dialog">
+          <span class="material-symbols-outlined icon-sm">close</span>
+        </button>
       </div>
 
       <div class="form-group">
         <label class="form-label" for="correct-species-input">Confirmed Common Name</label>
-        <input type="text" id="correct-species-input" class="form-input" placeholder="e.g. European Robin">
+        <input type="text" id="correct-species-input" class="form-input" autofocus placeholder="e.g. European Robin">
       </div>
 
       <div class="form-group">
@@ -235,14 +518,15 @@
 
       <div class="form-group">
         <label class="form-label" for="correct-notes-input">Field Notes</label>
-        <textarea id="correct-notes-input" class="form-input" rows="3" placeholder="Lighting condition, song playback, plumage details observed..."></textarea>
+        <textarea id="correct-notes-input" class="form-input" rows="3" placeholder="Lighting condition, song playback, plumage details observed…"></textarea>
       </div>
 
-      <button id="btn-save-correction" class="btn-primary" style="margin-top: 18px;">
-        ✓ Save Verified Ground Truth
+      <button type="button" id="btn-save-correction" class="btn-primary-full">
+        <span class="material-symbols-outlined icon-sm">verified</span>
+        <span>Save Verified Ground Truth</span>
       </button>
     </div>
-  </div>
+  </dialog>
 
   <script src="/static/app.js"></script>
 </body>
