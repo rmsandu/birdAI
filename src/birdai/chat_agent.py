@@ -11,12 +11,16 @@ from birdai.gemini_client import (
     get_client,
 )
 from birdai.schemas import ChatMessage, ChatResponse
-from birdai.sightings_aggregator import SightingsAggregator, describe_unavailable_sources
+from birdai.sightings_aggregator import (
+    SOURCE_LABELS,
+    SightingsAggregator,
+    describe_unavailable_sources,
+)
 
 logger = logging.getLogger(__name__)
 
 CHAT_SYSTEM_PROMPT = """You are BirdAI Assistant, an expert naturalist and birdwatching guide.
-You help birdwatchers discover recent bird sightings in Switzerland and worldwide using verified real-time data from eBird and ornitho.ch.
+You help birdwatchers discover recent bird sightings in Switzerland and worldwide using verified real-time data.
 
 When the user asks about bird sightings, species in a region, or a specific bird:
 1. Call the `search_bird_sightings` tool with the extracted location, distance radius (5, 15, or 25 km), and optional species name.
@@ -25,7 +29,7 @@ When the user asks about bird sightings, species in a region, or a specific bird
 4. When synthesizing your final response:
    - Provide a warm, knowledgeable naturalist summary.
    - Mention key details: species names (common and scientific), how many individuals, dates, distances, and locations.
-   - Explicitly cite the source platform for each record (e.g. "[eBird]" or "[ornitho.ch]").
+   - Explicitly cite the source platform for each record (e.g. "[eBird]").
    - Give practical birdwatching advice on the habitat (e.g. reedbeds for bitterns, fast streams for dippers).
 5. If the tool result lists `unavailable_sources`, the user is already shown a notice about it, so don't repeat it.
    Never imply that a species is absent from a source that could not be queried.
@@ -37,7 +41,7 @@ def _build_sightings_tool() -> types.Tool:
         name="search_bird_sightings",
         description=(
             "Search recent bird sightings within 5 km, 15 km, or 25 km of a location "
-            "using live data from eBird and ornitho.ch."
+            "using live eBird data."
         ),
         parameters={
             "type": "OBJECT",
@@ -209,10 +213,11 @@ class BirdChatAgent:
             )
 
             unavailable = metadata.get("unavailable_sources", {})
-            source_notice = describe_unavailable_sources(unavailable)
+            sources = self.aggregator.sources
+            source_notice = describe_unavailable_sources(unavailable, sources)
 
             # Every source failed: there is nothing for Gemini to summarise
-            if set(unavailable) >= {"ebird", "ornitho.ch"}:
+            if set(unavailable) >= set(sources):
                 return ChatResponse(
                     reply=source_notice,
                     sightings=[],
@@ -289,11 +294,9 @@ class BirdChatAgent:
         loc_label = metadata["location_name"]
         rad_label = metadata["radius_km"]
         unavailable = metadata.get("unavailable_sources", {})
-        source_notice = describe_unavailable_sources(unavailable)
-        checked = " and ".join(
-            label for src, label in (("ebird", "eBird"), ("ornitho.ch", "ornitho.ch"))
-            if src not in unavailable
-        )
+        queried = metadata.get("sources_queried", self.aggregator.sources)
+        source_notice = describe_unavailable_sources(unavailable, queried)
+        checked = " and ".join(SOURCE_LABELS[src] for src in queried if src not in unavailable)
 
         if not sightings and not checked:
             body = ""  # the source notice already explains that nothing could be checked

@@ -117,3 +117,13 @@ def test_describe_unavailable_sources():
         {"ebird": "could not be reached", "ornitho.ch": "could not be reached"}
     )
     assert "couldn't check" in total and "doesn't mean there are no birds" in total
+
+
+def test_ornitho_is_parked_by_default():
+    agg = SightingsAggregator(ebird_client=MagicMock())
+    assert agg.ornitho_client is None
+    assert agg.sources == ["ebird"]
+
+    _, meta = agg.search_sightings(location_name="Zurich")
+    assert meta["sources_queried"] == ["ebird"]
+    assert "ornitho.ch" not in meta["unavailable_sources"]

@@ -22,6 +22,7 @@ def test_extract_heuristics_from_prompt():
 
 def test_chat_agent_fallback_process():
     mock_agg = MagicMock()
+    mock_agg.sources = ["ebird", "ornitho.ch"]
     mock_agg.search_sightings.return_value = (
         [
             SightingItem(
@@ -113,6 +114,7 @@ def test_gemini_path_sends_history_and_function_response(monkeypatch):
     monkeypatch.setattr(chat_agent_module, "generate_content_with_fallback", fake_generate)
 
     mock_agg = MagicMock()
+    mock_agg.sources = ["ebird", "ornitho.ch"]
     mock_agg.search_sightings.return_value = ([_sighting()], {"location_name": "Zurich", "radius_km": 5})
 
     res = BirdChatAgent(aggregator=mock_agg).process_query(
@@ -149,6 +151,7 @@ def test_sort_sightings_closest_then_most_recent():
 
 def test_fallback_when_all_sources_fail_does_not_claim_no_birds():
     mock_agg = MagicMock()
+    mock_agg.sources = ["ebird", "ornitho.ch"]
     mock_agg.search_sightings.return_value = (
         [],
         {
@@ -172,6 +175,7 @@ def test_fallback_when_all_sources_fail_does_not_claim_no_birds():
 
 def test_fallback_with_one_source_down_names_the_working_source():
     mock_agg = MagicMock()
+    mock_agg.sources = ["ebird", "ornitho.ch"]
     mock_agg.search_sightings.return_value = (
         [_sighting()],
         {"location_name": "Zurich", "radius_km": 15, "unavailable_sources": {"ebird": "not configured"}},
@@ -203,6 +207,7 @@ def test_ai_path_with_all_sources_down_skips_synthesis(monkeypatch):
     monkeypatch.setattr(chat_agent_module, "generate_content_with_fallback", fake_generate)
 
     mock_agg = MagicMock()
+    mock_agg.sources = ["ebird", "ornitho.ch"]
     mock_agg.search_sightings.return_value = (
         [],
         {

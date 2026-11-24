@@ -5,6 +5,7 @@ from birdai.config import (
     BIRDAI_DEFAULT_LATITUDE,
     BIRDAI_DEFAULT_LONGITUDE,
     BIRDAI_LOCATION,
+    ORNITHO_ENABLED,
 )
 from birdai.context import geocode_location
 from birdai.ebird_client import EBirdClient, sort_sightings
@@ -22,17 +23,21 @@ def _unavailable_reason(exc: Exception) -> str:
     return "could not be reached"
 
 
-def describe_unavailable_sources(unavailable: dict[str, str]) -> Optional[str]:
-    """User-facing notice explaining which sources failed, or None if all worked."""
+def describe_unavailable_sources(
+    unavailable: dict[str, str],
+    queried: Optional[list[str]] = None,
+) -> Optional[str]:
+    """User-facing notice explaining which queried sources failed, or None if all worked."""
     if not unavailable:
         return None
-    if set(unavailable) >= set(SOURCE_LABELS):
+    queried = queried if queried is not None else list(SOURCE_LABELS)
+    if set(unavailable) >= set(queried):
         return (
             "**Note:** I couldn't check for sightings right now — "
             + "; ".join(f"{SOURCE_LABELS[src]} {reason}" for src, reason in unavailable.items())
             + ". This doesn't mean there are no birds; please try again later."
         )
-    working = [label for src, label in SOURCE_LABELS.items() if src not in unavailable]
+    working = [SOURCE_LABELS[src] for src in queried if src not in unavailable]
     failed = "; ".join(f"{SOURCE_LABELS[src]} {reason}" for src, reason in unavailable.items())
     return (
         f"**Note:** results are incomplete — {failed}, "
@@ -48,7 +53,16 @@ class SightingsAggregator:
         ornitho_client: Optional[OrnithoClient] = None,
     ):
         self.ebird_client = ebird_client or EBirdClient()
-        self.ornitho_client = ornitho_client or OrnithoClient()
+        # ornitho.ch is parked unless enabled in config (or a client is passed explicitly)
+        if ornitho_client is not None:
+            self.ornitho_client: Optional[OrnithoClient] = ornitho_client
+        else:
+            self.ornitho_client = OrnithoClient() if ORNITHO_ENABLED else None
+
+    @property
+    def sources(self) -> list[str]:
+        """Sources this aggregator queries."""
+        return ["ebird"] + (["ornitho.ch"] if self.ornitho_client is not None else [])
 
     def resolve_center_coordinates(
         self,
@@ -140,18 +154,20 @@ class SightingsAggregator:
             logger.warning("eBird query encountered an error (%s); continuing with ornitho.", exc)
             unavailable["ebird"] = _unavailable_reason(exc)
 
-        # --- 2. Query ornitho.ch ---
-        try:
-            ornitho_results = self.ornitho_client.get_recent_sightings(
-                lat=lat,
-                lng=lng,
-                dist_km=radius_km,
-                species_name=species_name,
-            )
-            all_sightings.extend(ornitho_results)
-        except Exception as exc:
-            logger.warning("ornitho.ch query encountered an error (%s); continuing.", exc)
-            unavailable["ornitho.ch"] = _unavailable_reason(exc)
+        # --- 2. ornitho.ch (parked unless enabled) ---
+        if self.ornitho_client is not None:
+            try:
+                all_sightings.extend(
+                    self.ornitho_client.get_recent_sightings(
+                        lat=lat,
+                        lng=lng,
+                        dist_km=radius_km,
+                        species_name=species_name,
+                    )
+                )
+            except Exception as exc:
+                logger.warning("ornitho.ch query encountered an error (%s); continuing.", exc)
+                unavailable["ornitho.ch"] = _unavailable_reason(exc)
 
         # Strict radius clamping
         filtered = [s for s in all_sightings if s.distance_km <= radius_km]
@@ -168,6 +184,7 @@ class SightingsAggregator:
             "species_name": species_name,
             "total_count": len(filtered),
             "sources": list({s.source for s in filtered}),
+            "sources_queried": self.sources,
             "unavailable_sources": unavailable,
         }
 
