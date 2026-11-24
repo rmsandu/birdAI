@@ -17,14 +17,21 @@ SIGHTING = SightingItem(
     latitude=47.5098,
     longitude=8.4988,
     distance_km=14.2,
-    source="ornitho.ch",
+    source="ebird",
 )
-METADATA = {"location_name": "Zurich", "radius_km": 15, "total_count": 1, "sources": ["ornitho.ch"]}
+METADATA = {
+    "location_name": "Zurich",
+    "radius_km": 15,
+    "total_count": 1,
+    "sources": ["ebird"],
+    "sources_queried": ["ebird"],
+}
 
 
 @pytest.fixture
 def mock_aggregator(monkeypatch):
     aggregator = MagicMock()
+    aggregator.sources = ["ebird"]
     aggregator.search_sightings.return_value = ([SIGHTING], METADATA)
     monkeypatch.setattr(routes_module.chat_agent, "aggregator", aggregator)
     # Force the offline rule-based path so tests never call Gemini
@@ -68,7 +75,8 @@ def test_api_chat_endpoint(authed_client):
     assert response.status_code == 200
     data = response.json()
     assert "Common Kingfisher" in data["reply"]
-    assert data["sightings"][0]["source"] == "ornitho.ch"
+    assert data["sightings"][0]["source"] == "ebird"
+    assert "from eBird:" in data["reply"]
     assert data["parsed_query"]["location_name"] == "Zurich"
     assert data["mode"] == "rule_based"
     assert "Basic search mode" in data["reply"]

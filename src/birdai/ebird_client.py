@@ -12,6 +12,7 @@ from birdai.config import (
     HTTP_TIMEOUT_SECONDS,
 )
 from birdai.schemas import ObservationContext, ObservationEvidence, SightingItem
+from birdai.species_search import SEARCH_LOCALES, SpeciesNames
 
 
 def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -41,6 +42,10 @@ def sort_sightings(sightings: list[SightingItem]) -> list[SightingItem]:
 
 class EBirdServiceError(RuntimeError):
     pass
+
+
+# (species code, locale) -> taxonomy entry; shared across clients, names rarely change
+_TAXONOMY_NAME_CACHE: dict[tuple[str, str], dict] = {}
 
 
 class EBirdClient:
@@ -86,6 +91,40 @@ class EBirdClient:
             "/v2/ref/taxonomy/ebird",
             params={"fmt": "json", "locale": "en", "cat": "species"},
         )
+
+    def species_names(
+        self,
+        species_codes: set[str] | list[str],
+        locales: tuple[str, ...] = SEARCH_LOCALES,
+    ) -> list[SpeciesNames]:
+        """Localized common names (plus scientific and family name) for these species."""
+        codes = sorted({c for c in species_codes if c})
+        for locale in locales:
+            missing = [c for c in codes if (c, locale) not in _TAXONOMY_NAME_CACHE]
+            for start in range(0, len(missing), 200):
+                chunk = missing[start : start + 200]
+                payload = self._request(
+                    "/v2/ref/taxonomy/ebird",
+                    params={"fmt": "json", "locale": locale, "species": ",".join(chunk)},
+                )
+                for item in payload or []:
+                    _TAXONOMY_NAME_CACHE[(item["speciesCode"], locale)] = item
+
+        result = []
+        for code in codes:
+            entries = {loc: _TAXONOMY_NAME_CACHE.get((code, loc)) for loc in locales}
+            any_entry = next((e for e in entries.values() if e), None)
+            if any_entry is None:
+                continue
+            result.append(
+                SpeciesNames(
+                    code=code,
+                    scientific_name=any_entry.get("sciName", ""),
+                    family=any_entry.get("familyComName", ""),
+                    names={loc: e["comName"] for loc, e in entries.items() if e and e.get("comName")},
+                )
+            )
+        return result
 
     def resolve_species_code(
         self,
@@ -169,22 +208,16 @@ class EBirdClient:
         lng: float,
         dist_km: int,
         back_days: int,
-        max_results: int,
+        max_results: int | None,
         notable: bool,
     ) -> list[SightingItem]:
         dist_km = min(max(dist_km, 1), 50)
         back_days = min(max(back_days, 1), 30)
 
-        payload = self._request(
-            path,
-            params={
-                "lat": lat,
-                "lng": lng,
-                "dist": dist_km,
-                "back": back_days,
-                "maxResults": max_results,
-            },
-        )
+        params = {"lat": lat, "lng": lng, "dist": dist_km, "back": back_days}
+        if max_results is not None:  # None = everything eBird has for the area
+            params["maxResults"] = max_results
+        payload = self._request(path, params=params)
 
         sightings: list[SightingItem] = []
         for item in payload or []:
@@ -200,6 +233,7 @@ class EBirdClient:
             sightings.append(
                 SightingItem(
                     species_common_name=item.get("comName", "Unknown"),
+                    species_code=item.get("speciesCode"),
                     species_scientific_name=item.get("sciName"),
                     count=item.get("howMany") or 1,
                     observed_at=item.get("obsDt", ""),
@@ -221,7 +255,7 @@ class EBirdClient:
         lng: float,
         dist_km: int = 15,
         back_days: int = 7,
-        max_results: int = 40,
+        max_results: int | None = 40,
     ) -> list[SightingItem]:
         return self._sightings_in_radius(
             "/v2/data/obs/geo/recent", lat, lng, dist_km, back_days, max_results, notable=False

@@ -40,6 +40,10 @@ def _get_model_fallbacks() -> list[str]:
 GEMINI_MODEL_FALLBACKS = _get_model_fallbacks()
 
 EBIRD_API_KEY = os.getenv("EBIRD_API_KEY")
+
+# ornitho.ch is parked: its RSS URL returns a login page, so there is no public feed.
+# Re-enable once we have API access (Swiss Ornithological Institute / Biolovision).
+ORNITHO_ENABLED = os.getenv("ORNITHO_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 EBIRD_API_URL = os.getenv("EBIRD_API_URL", "https://api.ebird.org")
 EBIRD_LOOKBACK_DAYS = _get_optional_int("EBIRD_LOOKBACK_DAYS", 30)
 EBIRD_RADIUS_KM = _get_optional_int("EBIRD_RADIUS_KM", 25)

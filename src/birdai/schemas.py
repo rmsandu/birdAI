@@ -153,6 +153,7 @@ class ObservationRecord(BaseModel):
 
 class SightingItem(BaseModel):
     species_common_name: str
+    species_code: Optional[str] = None  # eBird species code, e.g. "comkin1"
     species_scientific_name: Optional[str] = None
     count: Optional[int] = 1
     observed_at: str
