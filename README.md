@@ -14,17 +14,43 @@ BirdAI is a context-aware embodied bird perception and observation review system
 
 ---
 
+## UI Preview (Stitch — Live Field ID)
+
+<table>
+  <tr>
+    <td align="center" width="25%">
+      <img src="docs/screenshots/live-field-id.png" alt="BirdAI Live Field ID Viewfinder" width="220"><br>
+      <sub><b>Identify</b> — Live Field ID viewfinder, HUD telemetry &amp; bioacoustic spectrogram</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="docs/screenshots/specimen-results.png" alt="BirdAI Specimen Analysis Results" width="220"><br>
+      <sub><b>Results</b> — Multimodal visual, audio &amp; checklist evidence</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="docs/screenshots/sightings-radar.png" alt="BirdAI Sightings Radar" width="220"><br>
+      <sub><b>Sightings</b> — Natural-language eBird &amp; ornitho.ch radar</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="docs/screenshots/life-list.png" alt="BirdAI Life List Journal" width="220"><br>
+      <sub><b>Life List</b> — Saved observations &amp; verified ground truth</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## Color Palette & Design System
 
-The application styling follows a 5-color field guide palette:
+The web client follows the **Stitch "BirdAI - Live Field ID"** color system with `Inter` typography and `Material Symbols Outlined` icons:
 
-| Color | Hex | Role |
+| Token | Hex | Role |
 | :--- | :--- | :--- |
-| **Deep Evergreen** | `#123F2A` | Primary brand, navigation bar, headers, high-contrast text |
-| **Olive Leaf** | `#547239` | High-confidence badges, confirmed species checkmarks, nature accents |
-| **Crimson Berry** | `#9F2245` | Primary action buttons (*Analyze Observation*), alert flags |
-| **Coral Pink** | `#FF868A` | Active tab highlights, audio waveform accents, chips |
-| **Warm Sand Tan** | `#C19168` | Card borders, metadata tags (date, time, GPS coordinates), dividers |
+| **Primary (Deep Forest)** | `#022218` | Primary buttons, active mode pill, tactile shutter, high-contrast headers |
+| **Secondary (Field Emerald)** | `#186c42` | Verified status badges, GPS indicators, active focus states |
+| **Secondary Fixed (Mint)** | `#a4f4bf` | Confidence match pills, reticle lock corners, bioacoustic bars |
+| **Surface** | `#f9f9ff` | App canvas, glassmorphic top header &amp; bottom navigation bar |
+| **Surface Container** | `#e7eeff` / `#f0f3ff` | Match result drawer, evidence cards, zoom &amp; control strips |
+| **Inverse Surface (HUD)** | `#003060` | Viewfinder environmental chips &amp; bioacoustic spectrogram overlay |
 
 Detailed Stitch design prompts and component specifications are documented in [`docs/stitch/prompt_guide.md`](docs/stitch/prompt_guide.md).
 

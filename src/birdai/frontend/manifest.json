@@ -1,11 +1,11 @@
 {
-  "name": "BirdAI — Multimodal Bird Perception",
+  "name": "BirdAI — Live Field ID",
   "short_name": "BirdAI",
-  "description": "Embodied bird perception, evidence exposure, and observation review app.",
+  "description": "Multimodal bird perception, bioacoustic analysis, sightings radar, and field life list.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F9F8F6",
-  "theme_color": "#123F2A",
+  "background_color": "#f9f9ff",
+  "theme_color": "#022218",
   "icons": [
     {
       "src": "/static/icon.png",
