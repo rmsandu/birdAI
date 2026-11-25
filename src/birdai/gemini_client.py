@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from pathlib import Path
 
 from google import genai
@@ -18,7 +19,7 @@ SYSTEM_PROMPT = """
 You are BirdAI, a cautious bird perception assistant for wildlife observation.
 
 Your task:
-- analyze the uploaded image or audio recording
+- analyze the uploaded image, audio recording, or video clip (using both visual frames and soundtrack when present)
 - suggest the most likely bird species using the observation context
 - return up to three likely species sorted by confidence descending
 - if you are highly confident, you may return only one species
@@ -69,6 +70,13 @@ def _build_media_content(
     if detected_file.modality == "audio":
         return {
             "type": "audio",
+            "uri": uploaded_file.uri,
+            "mime_type": detected_file.mime_type,
+        }
+
+    if detected_file.modality == "video":
+        return {
+            "type": "video",
             "uri": uploaded_file.uri,
             "mime_type": detected_file.mime_type,
         }
@@ -231,6 +239,40 @@ def generate_content_with_fallback(
         raise last_error
 
 
+def _file_state_name(uploaded_file) -> str:
+    state = getattr(uploaded_file, "state", None)
+    if state is None:
+        return "ACTIVE"
+    name = getattr(state, "name", None)
+    return str(name if name is not None else state).upper()
+
+
+def _wait_for_file_active(
+    client: genai.Client,
+    uploaded_file,
+    *,
+    timeout_seconds: float = 120.0,
+    poll_interval: float = 1.5,
+):
+    """Poll Gemini Files API until an uploaded media file (e.g. video) finishes PROCESSING."""
+    deadline = time.monotonic() + timeout_seconds
+    current = uploaded_file
+    while True:
+        state_name = _file_state_name(current)
+        if state_name in {"ACTIVE", "STATE_UNSPECIFIED"}:
+            return current
+        if state_name == "FAILED":
+            raise RuntimeError(
+                f"Gemini file processing failed for {getattr(current, 'name', 'uploaded file')}."
+            )
+        if time.monotonic() >= deadline:
+            raise TimeoutError(
+                f"Timed out waiting for Gemini to process uploaded file (state={state_name})."
+            )
+        time.sleep(poll_interval)
+        current = client.files.get(name=current.name)
+
+
 def analyze_file(
     file_path: str,
     *,
@@ -240,6 +282,8 @@ def analyze_file(
     client = get_client()
     path = Path(file_path)
     uploaded_file = client.files.upload(file=path)
+    if detected_file.modality == "video" or _file_state_name(uploaded_file) == "PROCESSING":
+        uploaded_file = _wait_for_file_active(client, uploaded_file)
     prompt = _build_analysis_prompt(detected_file.modality, observation_context)
 
     response = generate_content_with_fallback(

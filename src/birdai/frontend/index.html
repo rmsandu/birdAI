@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=4">
+  <link rel="stylesheet" href="/static/styles.css?v=5">
 </head>
 <body>
 
@@ -66,7 +66,7 @@
     <section id="capture-view" class="view-section active" aria-label="Live Field Identification">
 
       <!-- Hidden Native File Inputs -->
-      <input type="file" id="image-file-input" accept="image/*" capture="environment" hidden>
+      <input type="file" id="image-file-input" accept="image/*,video/*" capture="environment" hidden>
       <input type="file" id="audio-file-input" accept="audio/*" hidden>
 
       <!-- Mode Selector Floating Pill Switch (Variant 1 order: Photo Only | Dual Capture | Sound) -->
@@ -94,13 +94,18 @@
           <div class="viewfinder-empty-badge">
             <span class="material-symbols-outlined">add_a_photo</span>
           </div>
-          <p class="viewfinder-empty-title">Tap or drop bird photo / audio</p>
-          <p class="viewfinder-empty-sub">JPEG, PNG, HEIC, WAV, MP3, FLAC • Auto EXIF GPS</p>
+          <p class="viewfinder-empty-title">Tap or drop bird photo, video, or audio</p>
+          <p class="viewfinder-empty-sub">JPEG, PNG, HEIC, MP4, MOV, WEBM, WAV, MP3, FLAC</p>
         </div>
 
         <!-- Uploaded Image Preview Layer -->
         <div id="image-preview-container" class="viewfinder-media" style="display: none;">
           <img id="image-preview" alt="Bird Observation Preview">
+        </div>
+
+        <!-- Uploaded Video Preview Layer -->
+        <div id="video-preview-container" class="viewfinder-media" style="display: none;">
+          <video id="video-preview" playsinline muted loop autoplay controls></video>
         </div>
 
         <!-- Vignette & HUD Gradient Overlay -->
@@ -668,6 +673,6 @@
     </div>
   </dialog>
 
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>

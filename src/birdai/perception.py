@@ -158,7 +158,7 @@ def analyze_observation(
     if detected_file.modality == "unknown":
         raise ValueError(
             "Unsupported or unrecognized file content. Please upload a valid "
-            "image or audio recording."
+            "image, audio, or video recording."
         )
 
     resolved_context, context_warnings = resolve_observation_context(
@@ -214,6 +214,22 @@ def analyze_observation(
                 reason=candidate.reason,
             )
             enriched_candidate = enriched_candidate.model_copy(update={"audio_evidence": audio_ev})
+        elif detected_file.modality == "video":
+            visual_ev = VisualEvidence(
+                source="vlm_video",
+                model_name="gemini-2.5-flash",
+                raw_score=float(candidate.confidence_probability),
+                reason=candidate.reason,
+            )
+            audio_ev = AudioEvidence(
+                source="video_audio",
+                model_name="gemini-2.5-flash",
+                raw_score=float(candidate.confidence_probability),
+                reason="Evaluated jointly from video clip visual frames and soundtrack.",
+            )
+            enriched_candidate = enriched_candidate.model_copy(
+                update={"visual_evidence": visual_ev, "audio_evidence": audio_ev}
+            )
 
         enriched_candidates.append(enriched_candidate)
         all_warnings.extend(candidate_warnings)
@@ -239,6 +255,7 @@ def analyze_multimodal_observation(
     *,
     image_path: Optional[str] = None,
     audio_path: Optional[str] = None,
+    video_path: Optional[str] = None,
     observation_context: ObservationContext,
     merlin_suggestion: Optional[MerlinSuggestion] = None,
     use_mock: bool = False,
@@ -246,8 +263,8 @@ def analyze_multimodal_observation(
     ebird_client: EBirdClient | None = None,
     classifier_client_fn=classify_image,
 ) -> ObservationRecord:
-    if not image_path and not audio_path:
-        raise ValueError("At least one image or audio recording must be provided.")
+    if not image_path and not audio_path and not video_path:
+        raise ValueError("At least one image, audio, or video file must be provided.")
 
     record_id = f"obs-{uuid.uuid4().hex[:12]}"
     created_at = datetime.now(timezone.utc)
@@ -336,6 +353,40 @@ def analyze_multimodal_observation(
                 cand = cand.model_copy(update={"audio_evidence": audio_ev})
                 candidates_by_name[name_key] = cand
 
+    # 2b. Analyze Video if present
+    if video_path:
+        vid_result = analyze_observation(
+            video_path,
+            resolved_context,
+            use_mock=use_mock,
+            http_client=http_client,
+            ebird_client=ebird_client,
+            classifier_client_fn=classifier_client_fn,
+        )
+        if not image_path and not audio_path:
+            resolved_context = vid_result.observation_context
+            overall_uncertainty = vid_result.uncertainty
+            uncertainty_reasons = vid_result.uncertainty_reasons
+            suggested_next_action = vid_result.suggested_next_action
+        else:
+            uncertainty_reasons.extend(vid_result.uncertainty_reasons)
+        warnings.extend(vid_result.warnings)
+
+        for cand in vid_result.likely_species:
+            name_key = cand.common_name.lower()
+            if name_key in candidates_by_name:
+                existing = candidates_by_name[name_key]
+                merged_score = max(existing.confidence_probability, cand.confidence_probability)
+                candidates_by_name[name_key] = existing.model_copy(
+                    update={
+                        "visual_evidence": existing.visual_evidence or cand.visual_evidence,
+                        "audio_evidence": existing.audio_evidence or cand.audio_evidence,
+                        "confidence_probability": merged_score,
+                    }
+                )
+            else:
+                candidates_by_name[name_key] = cand
+
     # 3. Add Merlin suggestion as an explicitly unverified candidate if not present
     if merlin_suggestion and merlin_suggestion.species_name:
         merlin_key = merlin_suggestion.species_name.strip().lower()
@@ -374,12 +425,13 @@ def analyze_multimodal_observation(
         reverse=True,
     )
 
-    if image_path and audio_path:
+    active_modalities = [m for m, p in (("image", image_path), ("audio", audio_path), ("video", video_path)) if p]
+    if len(active_modalities) > 1:
         modality = "multimodal"
-    elif image_path:
-        modality = "image"
+    elif active_modalities:
+        modality = active_modalities[0]
     else:
-        modality = "audio"
+        modality = "unknown"
 
     return ObservationRecord(
         id=record_id,
@@ -387,6 +439,7 @@ def analyze_multimodal_observation(
         modality=modality,
         image_path=image_path,
         audio_path=audio_path,
+        video_path=video_path,
         observation_context=resolved_context,
         merlin_suggestion=merlin_suggestion,
         candidates=final_candidates,

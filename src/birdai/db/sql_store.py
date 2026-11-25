@@ -22,6 +22,7 @@ class SQLObservationStore:
             "modality": model.modality,
             "image_path": model.image_path,
             "audio_path": model.audio_path,
+            "video_path": model.video_path,
             "observation_context": model.context_json,
             "merlin_suggestion": model.merlin_suggestion_json,
             "candidates": model.candidates_json,
@@ -62,6 +63,7 @@ class SQLObservationStore:
             modality=record.modality,
             image_path=record.image_path,
             audio_path=record.audio_path,
+            video_path=record.video_path,
             context_json=record.observation_context.model_dump(mode="json"),
             merlin_suggestion_json=(
                 record.merlin_suggestion.model_dump(mode="json")

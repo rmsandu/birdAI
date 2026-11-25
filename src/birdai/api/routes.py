@@ -115,6 +115,7 @@ async def extract_metadata(file: UploadFile):
 async def create_observation(
     image: Optional[UploadFile] = None,
     audio: Optional[UploadFile] = None,
+    video: Optional[UploadFile] = None,
     location_text: Optional[str] = Form(None),
     latitude: Optional[float] = Form(None),
     longitude: Optional[float] = Form(None),
@@ -126,16 +127,17 @@ async def create_observation(
     current_user: UserModel = Depends(get_current_active_user),
     obs_store=Depends(get_store),
 ) -> ObservationRecord:
-    """Submit a bird observation with image, audio, or both."""
-    if not image and not audio:
+    """Submit a bird observation with image, audio, video, or a combination."""
+    if not image and not audio and not video:
         raise HTTPException(
             status_code=400,
-            detail="At least one image or audio file must be uploaded.",
+            detail="At least one image, audio, or video file must be uploaded.",
         )
 
     saved_files: dict[str, bytes] = {}
     temp_image_path: Optional[str] = None
     temp_audio_path: Optional[str] = None
+    temp_video_path: Optional[str] = None
 
     try:
         if image and image.filename:
@@ -158,6 +160,16 @@ async def create_observation(
                 temp_aud.write(audio_bytes)
                 temp_audio_path = temp_aud.name
 
+        if video and video.filename:
+            video_bytes = await video.read()
+            saved_files[video.filename] = video_bytes
+            with tempfile.NamedTemporaryFile(
+                suffix=Path(video.filename).suffix,
+                delete=False,
+            ) as temp_vid:
+                temp_vid.write(video_bytes)
+                temp_video_path = temp_vid.name
+
         context = build_observation_context(
             observation_date=observation_date,
             observation_time=observation_time,
@@ -176,6 +188,7 @@ async def create_observation(
         record = analyze_multimodal_observation(
             image_path=temp_image_path,
             audio_path=temp_audio_path,
+            video_path=temp_video_path,
             observation_context=context,
             merlin_suggestion=merlin,
             use_mock=use_mock,
@@ -184,7 +197,10 @@ async def create_observation(
         # Update media paths in record to point to permanent stored paths
         rel_img = f"/api/media/{record.id}/{image.filename}" if (image and image.filename) else None
         rel_aud = f"/api/media/{record.id}/{audio.filename}" if (audio and audio.filename) else None
-        record = record.model_copy(update={"image_path": rel_img, "audio_path": rel_aud})
+        rel_vid = f"/api/media/{record.id}/{video.filename}" if (video and video.filename) else None
+        record = record.model_copy(
+            update={"image_path": rel_img, "audio_path": rel_aud, "video_path": rel_vid}
+        )
 
         # Save to store with user_id scoping
         sig = inspect.signature(obs_store.save)
@@ -195,16 +211,12 @@ async def create_observation(
         return record
 
     finally:
-        if temp_image_path and Path(temp_image_path).exists():
-            try:
-                Path(temp_image_path).unlink()
-            except Exception:
-                pass
-        if temp_audio_path and Path(temp_audio_path).exists():
-            try:
-                Path(temp_audio_path).unlink()
-            except Exception:
-                pass
+        for tmp in (temp_image_path, temp_audio_path, temp_video_path):
+            if tmp and Path(tmp).exists():
+                try:
+                    Path(tmp).unlink()
+                except Exception:
+                    pass
 
 
 @router.get("/observations/{observation_id}", response_model=ObservationRecord)
