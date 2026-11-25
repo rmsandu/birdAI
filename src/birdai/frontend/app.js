@@ -9,6 +9,31 @@ let preferredRadiusKm = 15;
 let chatHistory = [];
 let cachedJournalRecords = [];
 let currentJournalFilter = "all";
+const mediaObjectUrlCache = new Map();
+
+async function loadAuthenticatedMedia(mediaUrl) {
+  if (!mediaUrl) return null;
+  if (!mediaUrl.startsWith("/api/media/")) return mediaUrl;
+  if (mediaObjectUrlCache.has(mediaUrl)) return mediaObjectUrlCache.get(mediaUrl);
+  try {
+    const res = await fetch(mediaUrl, { headers: getAuthHeaders() });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    mediaObjectUrlCache.set(mediaUrl, objUrl);
+    return objUrl;
+  } catch {
+    return null;
+  }
+}
+
+function hydrateAuthenticatedImages(root = document) {
+  root.querySelectorAll("img[data-auth-src]").forEach(async (img) => {
+    const mediaUrl = img.getAttribute("data-auth-src");
+    const resolved = await loadAuthenticatedMedia(mediaUrl);
+    if (resolved) img.src = resolved;
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   setupDialogLightDismissFallback();
@@ -685,6 +710,12 @@ function updateMatchDrawer(record) {
   const top = record.candidates[0];
   if (commonEl) commonEl.textContent = top.common_name;
   if (sciEl) sciEl.textContent = top.scientific_name || "Species candidate";
+  const matchThumb = document.getElementById("match-thumb");
+  if (matchThumb && record.image_path) {
+    loadAuthenticatedMedia(record.image_path).then((resolved) => {
+      if (resolved) matchThumb.src = resolved;
+    });
+  }
   if (pillEl) {
     pillEl.textContent = `${top.confidence_probability}% Match`;
     pillEl.style.display = "inline-flex";
@@ -728,6 +759,11 @@ function renderResults(record) {
   const dashOffset = circumference * (1 - Math.min(100, Math.max(0, conf)) / 100);
   const shortId = String(record.id || "").slice(0, 6).toUpperCase() || "OBS";
   const heroPhoto = currentImageUrl || (record.image_path ? record.image_path : null);
+  const heroImgTag = heroPhoto
+    ? heroPhoto.startsWith("/api/media/")
+      ? `<img src="/static/icon.png" data-auth-src="${escapeHtml(heroPhoto)}" alt="${escapeHtml(top.common_name)}">`
+      : `<img src="${escapeHtml(heroPhoto)}" alt="${escapeHtml(top.common_name)}">`
+    : "";
   const obsLoc = record.observation_context?.location_text || "Field Location";
   const obsDate = record.observation_context?.observation_date || "Today";
   const modalityLabel = (record.modality || "multimodal").toUpperCase();
@@ -758,7 +794,7 @@ function renderResults(record) {
     <!-- Specimen Hero Card -->
     <article class="specimen-hero-card">
       <div class="specimen-hero-media">
-        ${heroPhoto ? `<img src="${escapeHtml(heroPhoto)}" alt="${escapeHtml(top.common_name)}">` : ""}
+        ${heroImgTag}
         <div class="specimen-hero-overlay">
           <div class="specimen-hero-badges">
             <span class="hero-badge-light">
@@ -912,6 +948,7 @@ function renderResults(record) {
   `;
 
   list.innerHTML = html;
+  hydrateAuthenticatedImages(list);
 
   document.getElementById("btn-confirm-top")?.addEventListener("click", () => {
     openCorrectionModal(top.common_name, top.scientific_name || "");
@@ -1258,7 +1295,7 @@ function renderJournalEntries() {
     card.className = "journal-log-card";
     card.innerHTML = `
       <div class="journal-log-top">
-        <img class="journal-thumb" src="${escapeHtml(r.image_path || "/static/icon.png")}" alt="${escapeHtml(displayName)}" onerror="this.src='/static/icon.png'">
+        <img class="journal-thumb" src="/static/icon.png" ${r.image_path ? `data-auth-src="${escapeHtml(r.image_path)}"` : ""} alt="${escapeHtml(displayName)}">
         <div class="journal-log-meta">
           <div class="journal-log-name">${escapeHtml(displayName)}</div>
           ${sciName ? `<div class="journal-log-sci">${escapeHtml(sciName)}</div>` : ""}
@@ -1287,12 +1324,27 @@ function renderJournalEntries() {
     card.addEventListener("click", () => {
       currentRecord = r;
       currentImageUrl = r.image_path || null;
+      if (r.image_path) {
+        loadAuthenticatedMedia(r.image_path).then((resolved) => {
+          if (resolved) {
+            const imgPreview = document.getElementById("image-preview");
+            const container = document.getElementById("image-preview-container");
+            const emptyEl = document.getElementById("viewfinder-empty");
+            if (imgPreview && container) {
+              imgPreview.src = resolved;
+              container.style.display = "block";
+            }
+            if (emptyEl) emptyEl.style.display = "none";
+          }
+        });
+      }
       updateMatchDrawer(r);
       renderResults(r);
       switchView("results");
     });
     listEl.appendChild(card);
   });
+  hydrateAuthenticatedImages(listEl);
 }
 
 function exportJournalCsv() {
