@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 from birdai.config import DATABASE_URL
@@ -40,3 +40,10 @@ def init_db(target_engine=None):
     from birdai.db import models  # noqa: F401
     bind_engine = target_engine or engine
     Base.metadata.create_all(bind=bind_engine)
+    # Lightweight additive column migration for existing SQLite/SQL databases
+    inspector = inspect(bind_engine)
+    if "observations" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("observations")}
+        if "video_path" not in cols:
+            with bind_engine.begin() as conn:
+                conn.execute(text("ALTER TABLE observations ADD COLUMN video_path VARCHAR(512)"))

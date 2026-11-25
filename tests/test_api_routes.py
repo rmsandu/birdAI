@@ -88,13 +88,39 @@ def test_create_and_get_observation(test_client):
     assert len(list_res.json()) == 1
 
 
+def test_create_observation_with_video(test_client):
+    sample_vid = FIXTURES / "sample.mp4"
+    assert sample_vid.exists()
+
+    with sample_vid.open("rb") as f:
+        file_bytes = f.read()
+
+    response = test_client.post(
+        "/api/observations",
+        data={
+            "location_text": "Zurich, Switzerland",
+            "observation_date": "2026-05-20",
+            "observation_time": "12:00:00",
+            "use_mock": "true",
+        },
+        files={"video": ("sample.mp4", file_bytes, "video/mp4")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["modality"] == "video"
+    assert data["video_path"] == f"/api/media/{data['id']}/sample.mp4"
+    assert len(data["candidates"]) >= 1
+    assert data["candidates"][0]["visual_evidence"]["source"] == "vlm_video"
+
+
 def test_create_observation_requires_media(test_client):
     response = test_client.post(
         "/api/observations",
         data={"location_text": "Zurich, Switzerland"},
     )
     assert response.status_code == 400
-    assert "At least one image or audio file" in response.json()["detail"]
+    assert "At least one image, audio, or video file" in response.json()["detail"]
 
 
 def test_observation_endpoints_require_authentication():

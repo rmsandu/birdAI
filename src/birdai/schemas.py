@@ -137,9 +137,10 @@ class ObservationCorrection(BaseModel):
 class ObservationRecord(BaseModel):
     id: str
     created_at: datetime
-    modality: Literal["image", "audio", "multimodal", "unknown"] = "image"
+    modality: Literal["image", "audio", "video", "multimodal", "unknown"] = "image"
     image_path: Optional[str] = None
     audio_path: Optional[str] = None
+    video_path: Optional[str] = None
     observation_context: ObservationContext
     merlin_suggestion: Optional[MerlinSuggestion] = None
     candidates: List[SpeciesCandidate] = Field(default_factory=list)

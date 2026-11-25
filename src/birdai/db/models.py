@@ -47,6 +47,7 @@ class ObservationModel(Base):
     modality = Column(String(32), nullable=False)
     image_path = Column(String(512), nullable=True)
     audio_path = Column(String(512), nullable=True)
+    video_path = Column(String(512), nullable=True)
 
     # Structured metadata payloads (compatible with SQLite JSON & Postgres JSON/JSONB)
     context_json = Column(JSON, nullable=False)

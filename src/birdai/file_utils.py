@@ -56,10 +56,35 @@ def _detect_audio(header: bytes) -> DetectedFileType | None:
     return None
 
 
+def _detect_video(header: bytes) -> DetectedFileType | None:
+    if len(header) >= 12 and header[4:8] == b"ftyp":
+        brand = header[8:12]
+        if brand == b"qt  ":
+            return DetectedFileType(modality="video", mime_type="video/quicktime")
+        if brand in {
+            b"isom",
+            b"iso2",
+            b"mp41",
+            b"mp42",
+            b"M4V ",
+            b"avc1",
+            b"3gp4",
+            b"3gp5",
+            b"dash",
+            b"MSNV",
+        }:
+            return DetectedFileType(modality="video", mime_type="video/mp4")
+
+    if header.startswith(b"\x1a\x45\xdf\xa3"):
+        return DetectedFileType(modality="video", mime_type="video/webm")
+
+    return None
+
+
 def detect_file_type(file_path: str) -> DetectedFileType:
     header = _read_header(file_path)
 
-    for detector in (_detect_image, _detect_audio):
+    for detector in (_detect_image, _detect_audio, _detect_video):
         detected = detector(header)
         if detected is not None:
             return detected

@@ -14,28 +14,50 @@ BirdAI is a context-aware embodied bird perception and observation review system
 
 ---
 
-## UI Preview (Stitch — Live Field ID)
+## UI Preview (Stitch — Live Field ID & Video)
 
 <table>
   <tr>
-    <td align="center" width="25%">
-      <img src="docs/screenshots/live-field-id.png" alt="BirdAI Live Field ID Viewfinder" width="220"><br>
-      <sub><b>Identify</b> — Live Field ID viewfinder, HUD telemetry &amp; bioacoustic spectrogram</sub>
+    <td align="center" width="20%">
+      <img src="docs/screenshots/live-field-id.png" alt="BirdAI Live Field ID Viewfinder" width="190"><br>
+      <sub><b>Identify</b> — Live Field ID viewfinder, HUD telemetry &amp; spectrogram</sub>
     </td>
-    <td align="center" width="25%">
-      <img src="docs/screenshots/specimen-results.png" alt="BirdAI Specimen Analysis Results" width="220"><br>
-      <sub><b>Results</b> — Multimodal visual, audio &amp; checklist evidence</sub>
+    <td align="center" width="20%">
+      <img src="docs/screenshots/specimen-results.png" alt="BirdAI Specimen Analysis Results" width="190"><br>
+      <sub><b>Results (Photo)</b> — Gray Heron confidence ring &amp; breakdown</sub>
     </td>
-    <td align="center" width="25%">
-      <img src="docs/screenshots/sightings-radar.png" alt="BirdAI Sightings Radar" width="220"><br>
+    <td align="center" width="20%">
+      <img src="docs/screenshots/video-marsh-tit.png" alt="BirdAI Video Analysis Results" width="190"><br>
+      <sub><b>Results (Video)</b> — Own backyard Marsh Tit MP4 frame + soundtrack analysis</sub>
+    </td>
+    <td align="center" width="20%">
+      <img src="docs/screenshots/sightings-radar.png" alt="BirdAI Sightings Radar" width="190"><br>
       <sub><b>Sightings</b> — Natural-language eBird &amp; ornitho.ch radar</sub>
     </td>
-    <td align="center" width="25%">
-      <img src="docs/screenshots/life-list.png" alt="BirdAI Life List Journal" width="220"><br>
-      <sub><b>Life List</b> — Saved observations &amp; verified ground truth</sub>
+    <td align="center" width="20%">
+      <img src="docs/screenshots/life-list.png" alt="BirdAI Life List Journal" width="190"><br>
+      <sub><b>Life List</b> — Saved photo &amp; video observations</sub>
     </td>
   </tr>
 </table>
+
+---
+
+## Field Observation Showcase
+
+All photos and videos shown below are my own original field captures (the Marsh Tit video above was recorded in my own backyard).
+
+### Gray Heron (*Ardea cinerea*) — Verified Field Capture (Phone)
+<p align="center">
+  <img src="docs/screenshots/gray-heron.jpg" alt="Gray Heron (Ardea cinerea) photographed on a phone in Zurich" width="760"><br>
+  <sub>My own photo, taken on a phone at Lake Zurich.</sub>
+</p>
+
+### Water Rail / Wasserralle (*Rallus aquaticus*) — Field Capture (Professional Camera)
+<p align="center">
+  <img src="docs/screenshots/water-rail.jpg" alt="Water Rail (Rallus aquaticus) photographed with a professional camera" width="760"><br>
+  <sub>My own photo, taken with a professional camera.</sub>
+</p>
 
 ---
 

@@ -2,6 +2,8 @@
 let currentRecord = null;
 let currentImageFile = null;
 let currentImageUrl = null;
+let currentVideoFile = null;
+let currentVideoUrl = null;
 let currentAudioFile = null;
 let currentUser = null;
 let currentMode = "hybrid";
@@ -28,10 +30,10 @@ async function loadAuthenticatedMedia(mediaUrl) {
 }
 
 function hydrateAuthenticatedImages(root = document) {
-  root.querySelectorAll("img[data-auth-src]").forEach(async (img) => {
-    const mediaUrl = img.getAttribute("data-auth-src");
+  root.querySelectorAll("img[data-auth-src], video[data-auth-src]").forEach(async (el) => {
+    const mediaUrl = el.getAttribute("data-auth-src");
     const resolved = await loadAuthenticatedMedia(mediaUrl);
-    if (resolved) img.src = resolved;
+    if (resolved) el.src = resolved;
   });
 }
 
@@ -315,7 +317,7 @@ function setupEventListeners() {
 
   // Main Shutter / Analyze
   document.getElementById("btn-analyze")?.addEventListener("click", () => {
-    if (!currentImageFile && !currentAudioFile) {
+    if (!currentImageFile && !currentAudioFile && !currentVideoFile) {
       if (currentMode === "acoustic") audioInput?.click();
       else imageInput?.click();
       return;
@@ -418,7 +420,7 @@ function syncContextChips() {
 function updateShutterState() {
   const caption = document.getElementById("shutter-caption");
   const icon = document.getElementById("shutter-icon");
-  const ready = Boolean(currentImageFile || currentAudioFile);
+  const ready = Boolean(currentImageFile || currentAudioFile || currentVideoFile);
   if (caption) caption.textContent = ready ? "Identify Now" : "Capture / Pick";
   if (icon) icon.textContent = ready ? "auto_awesome" : "lens";
 }
@@ -521,12 +523,16 @@ function handleFileSelection(file) {
   if (file.type.startsWith("image/") || /\.(jpe?g|png|heic|webp)$/i.test(file.name)) {
     currentImageFile = file;
     currentImageUrl = URL.createObjectURL(file);
+    currentVideoFile = null;
+    currentVideoUrl = null;
     const imgPreview = document.getElementById("image-preview");
     const container = document.getElementById("image-preview-container");
+    const vidContainer = document.getElementById("video-preview-container");
     const emptyEl = document.getElementById("viewfinder-empty");
     const matchThumb = document.getElementById("match-thumb");
     const lockText = document.getElementById("reticle-lock-text");
 
+    if (vidContainer) vidContainer.style.display = "none";
     if (imgPreview && container) {
       imgPreview.src = currentImageUrl;
       container.style.display = "block";
@@ -537,6 +543,28 @@ function handleFileSelection(file) {
     document.getElementById("btn-import-photo")?.classList.add("has-file");
 
     extractPhotoMetadata(file);
+    updateShutterState();
+  } else if (file.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(file.name)) {
+    currentVideoFile = file;
+    currentVideoUrl = URL.createObjectURL(file);
+    currentImageFile = null;
+    currentImageUrl = null;
+    const vidPreview = document.getElementById("video-preview");
+    const vidContainer = document.getElementById("video-preview-container");
+    const imgContainer = document.getElementById("image-preview-container");
+    const emptyEl = document.getElementById("viewfinder-empty");
+    const lockText = document.getElementById("reticle-lock-text");
+    const bannerEl = document.getElementById("banner-status-text");
+
+    if (imgContainer) imgContainer.style.display = "none";
+    if (vidPreview && vidContainer) {
+      vidPreview.src = currentVideoUrl;
+      vidContainer.style.display = "block";
+    }
+    if (emptyEl) emptyEl.style.display = "none";
+    if (lockText) lockText.textContent = `Video: ${file.name}`;
+    if (bannerEl) bannerEl.textContent = `Video loaded (${file.name}) • Visual + audio tracks ready`;
+    document.getElementById("btn-import-photo")?.classList.add("has-file");
     updateShutterState();
   } else if (file.type.startsWith("audio/") || /\.(wav|mp3|flac|ogg|m4a)$/i.test(file.name)) {
     currentAudioFile = file;
@@ -618,8 +646,8 @@ async function submitObservation() {
     openAuthModal("Please sign in or create an account to save and analyze observations.");
     return;
   }
-  if (!currentImageFile && !currentAudioFile) {
-    alert("Please upload at least one bird photo or audio recording.");
+  if (!currentImageFile && !currentAudioFile && !currentVideoFile) {
+    alert("Please upload at least one bird photo, video, or audio recording.");
     return;
   }
 
@@ -642,6 +670,7 @@ async function submitObservation() {
   const formData = new FormData();
   if (currentImageFile) formData.append("image", currentImageFile);
   if (currentAudioFile) formData.append("audio", currentAudioFile);
+  if (currentVideoFile) formData.append("video", currentVideoFile);
 
   const locVal = document.getElementById("location-text").value.trim();
   if (locVal) formData.append("location_text", locVal);
@@ -759,10 +788,15 @@ function renderResults(record) {
   const dashOffset = circumference * (1 - Math.min(100, Math.max(0, conf)) / 100);
   const shortId = String(record.id || "").slice(0, 6).toUpperCase() || "OBS";
   const heroPhoto = currentImageUrl || (record.image_path ? record.image_path : null);
+  const heroVideo = !heroPhoto ? (currentVideoUrl || record.video_path || null) : null;
   const heroImgTag = heroPhoto
     ? heroPhoto.startsWith("/api/media/")
       ? `<img src="/static/icon.png" data-auth-src="${escapeHtml(heroPhoto)}" alt="${escapeHtml(top.common_name)}">`
       : `<img src="${escapeHtml(heroPhoto)}" alt="${escapeHtml(top.common_name)}">`
+    : heroVideo
+    ? heroVideo.startsWith("/api/media/")
+      ? `<video data-auth-src="${escapeHtml(heroVideo)}" playsinline muted loop autoplay></video>`
+      : `<video src="${escapeHtml(heroVideo)}" playsinline muted loop autoplay></video>`
     : "";
   const obsLoc = record.observation_context?.location_text || "Field Location";
   const obsDate = record.observation_context?.observation_date || "Today";
@@ -1316,6 +1350,7 @@ function renderJournalEntries() {
       <div class="journal-log-footer">
         <span>${escapeHtml(coords)}</span>
         <div class="modality-chips">
+          ${r.video_path ? '<span class="modality-chip">Video</span>' : ""}
           ${r.audio_path ? '<span class="modality-chip">Audio</span>' : ""}
           ${r.image_path ? '<span class="modality-chip">Photo</span>' : ""}
         </div>
