@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,400..600,0..1,0&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/styles.css?v=2">
 </head>
 <body>
 
@@ -62,27 +62,27 @@
   <!-- Main Workspace -->
   <main class="app-main">
 
-    <!-- VIEW 1: IDENTIFY (Live Field ID) -->
+    <!-- ==================== VIEW 1: IDENTIFY (Live Field ID) ==================== -->
     <section id="capture-view" class="view-section active" aria-label="Live Field Identification">
 
       <!-- Hidden Native File Inputs -->
       <input type="file" id="image-file-input" accept="image/*" capture="environment" hidden>
       <input type="file" id="audio-file-input" accept="audio/*" hidden>
 
-      <!-- Mode Selector Floating Pill Switch -->
+      <!-- Mode Selector Floating Pill Switch (Variant 1 order: Photo Only | Dual Capture | Sound) -->
       <div class="mode-switch-wrap">
         <div class="mode-switch" role="tablist" aria-label="Capture modality">
+          <button type="button" role="tab" aria-selected="false" class="mode-btn" id="mode-optic" data-mode="optic">
+            <span class="material-symbols-outlined icon-sm">photo_camera</span>
+            <span>Photo Only</span>
+          </button>
           <button type="button" role="tab" aria-selected="true" class="mode-btn active" id="mode-hybrid" data-mode="hybrid">
             <span class="material-symbols-outlined icon-sm">sensors</span>
             <span>Dual Capture</span>
           </button>
-          <button type="button" role="tab" aria-selected="false" class="mode-btn" id="mode-optic" data-mode="optic">
-            <span class="material-symbols-outlined icon-sm">photo_camera</span>
-            <span>Visual Only</span>
-          </button>
           <button type="button" role="tab" aria-selected="false" class="mode-btn" id="mode-acoustic" data-mode="acoustic">
             <span class="material-symbols-outlined icon-sm">graphic_eq</span>
-            <span>Acoustic</span>
+            <span>Sound</span>
           </button>
         </div>
       </div>
@@ -159,7 +159,7 @@
               <span class="material-symbols-outlined icon-sm text-mint pulse-soft">graphic_eq</span>
               <span>BIOACOUSTIC SPECTROGRAM</span>
             </div>
-            <span id="spectrogram-freq-label" class="spectrogram-freq">2.4 kHz — 7.8 kHz</span>
+            <span id="spectrogram-freq-label" class="spectrogram-freq">1.8 kHz — 4.5 kHz</span>
           </div>
 
           <div id="spectrogram-bars" class="spectrogram-bars" aria-hidden="true">
@@ -195,7 +195,7 @@
         </div>
       </div>
 
-      <!-- Hidden/Compact Audio Element Container -->
+      <!-- Inline Audio Element Container -->
       <div id="audio-preview-container" class="audio-inline-bar" style="display: none;">
         <div class="audio-inline-header">
           <span class="material-symbols-outlined icon-sm text-secondary">audio_file</span>
@@ -299,7 +299,7 @@
             <span>Merlin Bird ID Suggestion (Optional)</span>
             <span class="unverified-tag">Unverified Prior</span>
           </div>
-          <input type="text" id="merlin-species" class="form-input" placeholder="e.g. Eurasian Blue Tit">
+          <input type="text" id="merlin-species" class="form-input" placeholder="e.g. European Green Woodpecker">
           <input type="text" id="merlin-notes" class="form-input" placeholder="Optional notes from Merlin audio identification" style="margin-top: 8px;">
         </div>
       </div>
@@ -343,26 +343,19 @@
 
     </section>
 
-    <!-- VIEW 2: RESULTS (Species Candidates & Evidence Workbench) -->
-    <section id="results-view" class="view-section" aria-label="Identification Results">
-      <div class="section-header-row">
-        <div>
-          <h1 class="section-title">Specimen Analysis</h1>
-          <p class="section-subtitle">Multimodal visual, bioacoustic &amp; checklist evidence</p>
-        </div>
-        <span class="heuristic-badge">Heuristic · Uncalibrated</span>
-      </div>
+    <!-- ==================== VIEW 2: RESULTS (Species Identification & Confidence) ==================== -->
+    <section id="results-view" class="view-section" aria-label="Species Identification & Confidence">
 
       <!-- Loading State -->
       <div id="loading-container" class="surface-card state-box" style="display: none;">
         <div class="spinner"></div>
-        <p class="state-title">Analyzing Observation…</p>
-        <p class="state-sub">Evaluating visual perception, acoustic cues, and regional checklist plausibility.</p>
+        <p class="state-title">Analyzing Specimen…</p>
+        <p class="state-sub">Evaluating visual morphology, bioacoustic syllables, and regional checklist plausibility.</p>
       </div>
 
-      <!-- Candidates List -->
-      <div id="results-container" style="display: none;">
-        <div id="candidates-list" class="candidates-stack"></div>
+      <!-- Stitch Species Identification & Confidence View -->
+      <div id="results-container" class="results-stack" style="display: none;">
+        <div id="candidates-list" class="results-stack"></div>
       </div>
 
       <!-- Initial Placeholder -->
@@ -370,8 +363,8 @@
         <div class="state-icon-circle">
           <span class="material-symbols-outlined">analytics</span>
         </div>
-        <p class="state-title">No Observation Submitted</p>
-        <p class="state-sub">Capture or import a bird photo or audio recording on the Identify tab to inspect independent visual, audio, and checklist evidence.</p>
+        <p class="state-title">No Specimen Analyzed Yet</p>
+        <p class="state-sub">Capture or import a bird photo or audio recording on the Identify tab to view the full multimodal confidence ring, breakdown, and alternate candidates.</p>
         <button type="button" class="btn-primary-inline" id="btn-go-identify">
           <span class="material-symbols-outlined icon-sm">photo_camera</span>
           <span>Go to Field ID</span>
@@ -379,48 +372,195 @@
       </div>
     </section>
 
-    <!-- VIEW 3: SIGHTINGS (Radar & Natural-Language Sightings Assistant) -->
-    <section id="sightings-view" class="view-section" aria-label="Nearby Sightings Radar">
-      <div class="section-header-row">
-        <div>
-          <h1 class="section-title">Sightings Radar</h1>
-          <p class="section-subtitle">Ask about recent eBird &amp; ornitho.ch sightings</p>
-        </div>
-        <span class="source-pill">Live Feed</span>
-      </div>
+    <!-- ==================== VIEW 3: SIGHTINGS (Sightings & Radar) ==================== -->
+    <section id="sightings-view" class="view-section" aria-label="Sightings & Radar">
 
-      <div class="quick-prompts" aria-label="Quick sighting queries">
-        <button type="button" class="prompt-chip" data-query="What notable birds were seen near me recently?">Notable nearby</button>
-        <button type="button" class="prompt-chip" data-query="Any recent owl sightings within 25 km?">Owls nearby</button>
-        <button type="button" class="prompt-chip" data-query="Where was a kingfisher seen recently?">Kingfisher</button>
-      </div>
-
-      <div id="chat-messages" class="chat-feed">
-        <div class="chat-bubble assistant">
-          <p>Ask me about recent bird sightings in any language (EN, DE, FR, IT, or Latin) — e.g. <em>"Where was an Eisvogel seen near Zurich?"</em></p>
-        </div>
-      </div>
-
-      <form id="chat-form" class="chat-composer">
-        <input type="text" id="chat-input" class="form-input chat-input" placeholder="Ask about recent bird sightings…" autocomplete="off" required>
-        <button type="submit" id="btn-chat-send" class="chat-send-btn" aria-label="Send sighting query">
-          <span class="material-symbols-outlined">send</span>
+      <!-- Search / Natural-Language Radar Query Bar -->
+      <form id="chat-form" class="radar-search-bar">
+        <span class="material-symbols-outlined icon-sm text-secondary">travel_explore</span>
+        <input type="text" id="chat-input" class="radar-search-input" placeholder="Search species, hotspots, or ask (e.g. Picus viridis)…" autocomplete="off" required>
+        <button type="submit" id="btn-chat-send" class="radar-send-btn" aria-label="Search sightings">
+          <span class="material-symbols-outlined icon-sm">arrow_forward</span>
         </button>
       </form>
-    </section>
 
-    <!-- VIEW 4: LIFE LIST (Observation Journal) -->
-    <section id="journal-view" class="view-section" aria-label="Life List Journal">
-      <div class="section-header-row">
-        <div>
-          <h1 class="section-title">Life List Journal</h1>
-          <p class="section-subtitle">Saved field observations &amp; verified ground truth</p>
+      <!-- Radius & Quick Filter Chips -->
+      <div class="radar-filter-strip" aria-label="Sightings radius and quick filters">
+        <button type="button" class="filter-pill radius-pill" data-radius="5">
+          <span class="material-symbols-outlined icon-xs">radar</span>
+          <span>Within 5 km</span>
+        </button>
+        <button type="button" class="filter-pill radius-pill active" data-radius="15">15 km</button>
+        <button type="button" class="filter-pill radius-pill" data-radius="25">25 km</button>
+        <span class="filter-divider" aria-hidden="true"></span>
+        <button type="button" class="filter-pill prompt-chip" data-query="What notable birds were seen nearby today?">
+          <span class="material-symbols-outlined icon-xs">schedule</span>
+          <span>Today</span>
+        </button>
+        <button type="button" class="filter-pill prompt-chip" data-query="Any recent European Green Woodpecker sightings nearby?">Green Woodpecker</button>
+        <button type="button" class="filter-pill prompt-chip" data-query="Any recent owl sightings nearby?">Owls</button>
+      </div>
+
+      <!-- Acoustic & Regional Radar Hero Map Card -->
+      <div class="radar-hero-card">
+        <div class="radar-rings" aria-hidden="true">
+          <span class="radar-ring r1"></span>
+          <span class="radar-ring r2"></span>
+          <span class="radar-ring r3"></span>
+          <span class="radar-pulse-dot"></span>
         </div>
-        <button type="button" id="btn-refresh-journal" class="icon-btn-subtle" aria-label="Refresh life list" title="Refresh">
-          <span class="material-symbols-outlined icon-sm">refresh</span>
+        <div class="radar-hero-top">
+          <div class="radar-badge-dark">
+            <span class="status-dot"></span>
+            <span>Sightings Radar Active</span>
+          </div>
+          <span id="radar-radius-badge" class="radar-badge-soft">15 km radius</span>
+        </div>
+        <div class="radar-hero-center">
+          <p id="radar-location-heading" class="radar-hero-title">eBird &amp; ornitho.ch Live Feed</p>
+          <p class="radar-hero-sub">Ask in EN, DE, FR, IT, or Latin to scan regional observations</p>
+        </div>
+        <div class="radar-legend-pill">
+          <span><i class="legend-dot amber"></i>Notable</span>
+          <span><i class="legend-dot mint"></i>Verified</span>
+          <span><i class="legend-dot blue"></i>eBird / ornitho</span>
+        </div>
+      </div>
+
+      <!-- Assistant Summary / Hotspot Highlight Banner -->
+      <div id="radar-assistant-banner" class="hotspot-banner" style="display: none;">
+        <div class="hotspot-icon-box">
+          <span class="material-symbols-outlined">local_fire_department</span>
+        </div>
+        <div class="hotspot-body">
+          <div class="hotspot-eyebrow">
+            <span>SIGHTINGS ASSISTANT SUMMARY</span>
+            <span id="radar-summary-tag" class="hotspot-tag">Live</span>
+          </div>
+          <p id="radar-summary-text" class="hotspot-text"></p>
+        </div>
+      </div>
+
+      <!-- Live Field Activity Feed -->
+      <div class="activity-header">
+        <div class="activity-title-group">
+          <h1 class="section-title">Live Field Activity</h1>
+          <span id="sightings-count-label" class="activity-count">Ask a query</span>
+        </div>
+        <button type="button" id="btn-load-nearby" class="btn-chip-outline">
+          <span class="material-symbols-outlined icon-xs">my_location</span>
+          <span>Scan Nearby</span>
         </button>
       </div>
+
+      <div id="chat-messages" class="activity-feed">
+        <div class="surface-card state-box compact-state">
+          <p class="state-title">Ready to Scan Regional Sightings</p>
+          <p class="state-sub">Search a species above or tap <strong>Scan Nearby</strong> to fetch recent verified observations from eBird and ornitho.ch.</p>
+        </div>
+      </div>
+
+      <!-- Bottom Bioacoustic Radar Callout -->
+      <button type="button" id="btn-radar-to-acoustic" class="radar-callout-card">
+        <div class="radar-callout-icon">
+          <span class="material-symbols-outlined">hearing</span>
+        </div>
+        <div class="radar-callout-text">
+          <span class="radar-callout-title">Heard something unusual?</span>
+          <span class="radar-callout-sub">Tap to jump to Live Field ID in Sound mode for bioacoustic analysis.</span>
+        </div>
+        <span class="material-symbols-outlined text-secondary">chevron_right</span>
+      </button>
+
+    </section>
+
+    <!-- ==================== VIEW 4: LIFE LIST (Field Journal & Life List) ==================== -->
+    <section id="journal-view" class="view-section" aria-label="Field Journal & Life List">
+
+      <!-- Dark Forest Hero Summary Card -->
+      <div class="lifelist-hero">
+        <div class="lifelist-hero-top">
+          <div class="lifelist-hero-brand">
+            <div class="lifelist-icon-badge">
+              <span class="material-symbols-outlined">menu_book</span>
+            </div>
+            <div>
+              <h1 class="lifelist-title">Life List &amp; Journal</h1>
+              <p id="lifelist-user-sub" class="lifelist-sub">Field Naturalist Log</p>
+            </div>
+          </div>
+          <div class="lifelist-hero-pills">
+            <span class="pill-emerald">2026 Active</span>
+            <span class="pill-glass">
+              <span class="material-symbols-outlined icon-xs">sync</span>
+              <span>Synced</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="lifelist-stats-grid">
+          <div class="lifelist-stat-box">
+            <span class="lifelist-stat-label">TOTAL LIFE BIRDS</span>
+            <div class="lifelist-stat-value">
+              <span id="stat-species-count">0</span>
+              <span class="lifelist-stat-unit">Species</span>
+            </div>
+            <span id="stat-species-sub" class="lifelist-stat-note">Unique identified</span>
+          </div>
+          <div class="lifelist-stat-box">
+            <span class="lifelist-stat-label">TOTAL SIGHTINGS</span>
+            <div class="lifelist-stat-value">
+              <span id="stat-logs-count">0</span>
+              <span class="lifelist-stat-unit">Logs</span>
+            </div>
+            <span id="stat-verified-sub" class="lifelist-stat-note text-mint">0 Verified</span>
+          </div>
+        </div>
+
+        <div class="lifelist-badges-row">
+          <span class="hero-tag-chip"><span class="material-symbols-outlined icon-xs">forest</span> Field Observer</span>
+          <span class="hero-tag-chip"><span class="material-symbols-outlined icon-xs">graphic_eq</span> Multimodal Logger</span>
+        </div>
+      </div>
+
+      <!-- Database Sync & Export CSV Strip -->
+      <div class="lifelist-utility-row">
+        <div class="utility-db-label">
+          <span class="material-symbols-outlined icon-sm text-secondary">cloud_done</span>
+          <span>SQLite Field Database</span>
+        </div>
+        <button type="button" id="btn-export-csv" class="btn-export-pill">
+          <span class="material-symbols-outlined icon-sm">download</span>
+          <span>Export CSV / Checklist</span>
+        </button>
+      </div>
+
+      <!-- Search & Filter Controls -->
+      <div class="journal-search-wrap">
+        <span class="material-symbols-outlined icon-sm text-secondary">search</span>
+        <input type="search" id="journal-search-input" class="journal-search-input" placeholder="Search species, notes, or location…">
+      </div>
+
+      <div class="journal-filter-strip" role="group" aria-label="Filter journal entries">
+        <button type="button" class="filter-pill journal-filter-btn active" data-filter="all">Recent First</button>
+        <button type="button" class="filter-pill journal-filter-btn" data-filter="verified">Verified Only</button>
+        <button type="button" class="filter-pill journal-filter-btn" data-filter="audio">Has Audio</button>
+        <button type="button" class="filter-pill journal-filter-btn" data-filter="photo">Has Photo</button>
+      </div>
+
+      <div class="activity-header">
+        <h2 class="section-title-sm">Field Log Entries</h2>
+        <span id="journal-count-label" class="activity-count">0 logged entries</span>
+      </div>
+
       <div id="journal-list" class="journal-stack"></div>
+
+      <div class="lifelist-cta-wrap">
+        <button type="button" id="btn-new-sighting" class="btn-floating-cta">
+          <span class="material-symbols-outlined icon-sm">add_circle</span>
+          <span>Add New Field Sighting</span>
+        </button>
+      </div>
     </section>
 
   </main>
@@ -508,12 +648,12 @@
 
       <div class="form-group">
         <label class="form-label" for="correct-species-input">Confirmed Common Name</label>
-        <input type="text" id="correct-species-input" class="form-input" autofocus placeholder="e.g. European Robin">
+        <input type="text" id="correct-species-input" class="form-input" autofocus placeholder="e.g. European Green Woodpecker">
       </div>
 
       <div class="form-group">
         <label class="form-label" for="correct-sci-input">Scientific Name (Optional)</label>
-        <input type="text" id="correct-sci-input" class="form-input" placeholder="e.g. Erithacus rubecula">
+        <input type="text" id="correct-sci-input" class="form-input" placeholder="e.g. Picus viridis">
       </div>
 
       <div class="form-group">
@@ -528,6 +668,6 @@
     </div>
   </dialog>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2"></script>
 </body>
 </html>
