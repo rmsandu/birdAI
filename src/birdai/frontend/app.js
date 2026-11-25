@@ -66,6 +66,20 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+async function readErrorDetail(res, fallback) {
+  try {
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await res.json();
+      return data.detail || fallback;
+    }
+    const text = (await res.text()).trim();
+    return text ? `${fallback} (${res.status}: ${text.slice(0, 120)})` : `${fallback} (HTTP ${res.status})`;
+  } catch {
+    return `${fallback} (HTTP ${res.status})`;
+  }
+}
+
 async function checkAuthStatus() {
   const token = getAuthToken();
   const btnOpenAuth = document.getElementById("btn-open-auth");
@@ -463,8 +477,7 @@ async function handleLoginSubmit(e) {
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || "Invalid email or password.");
+      throw new Error(await readErrorDetail(res, "Invalid email or password."));
     }
 
     const data = await res.json();
@@ -503,8 +516,7 @@ async function handleRegisterSubmit(e) {
     });
 
     if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || "Registration failed.");
+      throw new Error(await readErrorDetail(res, "Registration failed."));
     }
 
     const loginData = new FormData();
@@ -724,8 +736,7 @@ async function submitObservation() {
     }
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Failed to analyze observation.");
+      throw new Error(await readErrorDetail(res, "Failed to analyze observation."));
     }
 
     currentRecord = await res.json();
@@ -982,8 +993,7 @@ async function handleChatSubmit(e) {
     }
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Sightings query failed.");
+      throw new Error(await readErrorDetail(res, "Sightings query failed."));
     }
 
     const data = await res.json();
