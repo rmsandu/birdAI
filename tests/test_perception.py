@@ -141,6 +141,7 @@ def _base_context():
 
 
 def test_analyze_observation_includes_local_classifier_signal_for_image(monkeypatch):
+    monkeypatch.setattr("birdai.perception.CLASSIFIER_ENABLED", True)
     monkeypatch.setattr(
         "birdai.perception.search_recent_web_evidence",
         lambda **kwargs: ObservationEvidence(
@@ -204,6 +205,7 @@ def test_analyze_observation_skips_local_classifier_for_audio(monkeypatch):
 
 
 def test_analyze_observation_degrades_gracefully_when_classifier_unavailable(monkeypatch):
+    monkeypatch.setattr("birdai.perception.CLASSIFIER_ENABLED", True)
     monkeypatch.setattr(
         "birdai.perception.search_recent_web_evidence",
         lambda **kwargs: ObservationEvidence(

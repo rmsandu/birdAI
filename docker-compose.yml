@@ -7,6 +7,9 @@ services:
       - ./data:/app/data
     env_file:
       - .env
+    environment:
+      - CLASSIFIER_SERVICE_URL=http://classifier:8000
+      - CLASSIFIER_ENABLED=true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s

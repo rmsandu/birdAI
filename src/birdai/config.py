@@ -66,7 +66,7 @@ HTTP_TIMEOUT_SECONDS = _get_optional_int("BIRDAI_HTTP_TIMEOUT_SECONDS", 20)
 CLASSIFIER_SERVICE_URL = os.getenv("CLASSIFIER_SERVICE_URL", "http://localhost:8000")
 CLASSIFIER_TOP_K = _get_optional_int("CLASSIFIER_TOP_K", 3)
 CLASSIFIER_TIMEOUT_SECONDS = _get_optional_int("CLASSIFIER_TIMEOUT_SECONDS", 10)
-CLASSIFIER_ENABLED = os.getenv("CLASSIFIER_ENABLED", "true").lower() == "true"
+CLASSIFIER_ENABLED = os.getenv("CLASSIFIER_ENABLED", "false").lower() == "true"
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/birdai.db")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "birdai-dev-secret-key-change-in-production")
